@@ -1,0 +1,4052 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Event Cinemas — Admin Console</title>
+    <meta
+      name="description"
+      content="Administration Web Console for Event Cinemas, Gole Complex, Lalbandi-7, Sarlahi."
+    />
+    <meta property="og:title" content="Event Cinemas — Admin Console" />
+    <meta
+      property="og:description"
+      content="Real-time cinema ticketing, 190-seat monitor, and schedule CMS for Event Cinemas, Gole Complex, Lalbandi-7, Sarlahi."
+    />
+    <meta property="og:type" content="website" />
+
+    <!-- Firebase SDK (App + Realtime Database + Analytics Compat v9.23.0) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
+
+    <style>
+      :root {
+        --bg-canvas: #08080c;
+        --bg-surface: #0f172a;
+        --bg-surface-elevated: #131d35;
+        --bg-input: #0b1120;
+        --border-subtle: #1e293b;
+        --border-hover: #334155;
+        --text-primary: #f8fafc;
+        --text-secondary: #94a3b8;
+        --text-muted: #64748b;
+        --cinema-red: #e50914;
+        --cinema-red-hover: #c80711;
+        --cinema-red-soft: rgba(229, 9, 20, 0.14);
+        --cinema-red-border: rgba(229, 9, 20, 0.42);
+        --green: #16a34a;
+        --green-soft: rgba(22, 163, 74, 0.14);
+        --green-border: rgba(34, 197, 94, 0.34);
+        --amber: #f59e0b;
+        --amber-soft: rgba(245, 158, 11, 0.16);
+        --amber-border: rgba(245, 158, 11, 0.45);
+        --radius-lg: 14px;
+        --radius-md: 10px;
+        --radius-sm: 8px;
+        --font-sans: 'Plus Jakarta Sans', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+        --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+        --transition-fast: 160ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: var(--bg-canvas);
+        color: var(--text-primary);
+        font-family: var(--font-sans);
+        font-size: 15px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overflow-x: hidden;
+      }
+
+      button,
+      input,
+      select {
+        font-family: inherit;
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--cinema-red);
+        outline-offset: 2px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+
+      /* Main Container */
+      .console-shell {
+        max-width: 1220px;
+        margin: 0 auto;
+        padding: 20px 20px 56px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      /* Header */
+      .console-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 16px 20px;
+        background-color: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+      }
+
+      .brand-block {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        min-width: 0;
+      }
+
+      .seal-wrap {
+        width: 62px;
+        height: 62px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .seal-svg {
+        width: 62px;
+        height: 62px;
+        display: block;
+      }
+
+      .brand-copy {
+        min-width: 0;
+      }
+
+      .brand-title {
+        margin: 0;
+        font-size: clamp(1.125rem, 2.1vw, 1.45rem);
+        font-weight: 700;
+        letter-spacing: -0.015em;
+        color: var(--text-primary);
+        line-height: 1.25;
+      }
+
+      .brand-subtitle {
+        margin: 3px 0 0;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        letter-spacing: 0.01em;
+      }
+
+      .header-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+
+      .date-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 40px;
+        padding: 8px 14px;
+        background-color: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .date-badge-icon {
+        width: 15px;
+        height: 15px;
+        color: var(--cinema-red);
+        flex-shrink: 0;
+      }
+
+      /* Buttons */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 42px;
+        padding: 10px 18px;
+        border-radius: var(--radius-md);
+        font-size: 0.875rem;
+        font-weight: 600;
+        line-height: 1.2;
+        cursor: pointer;
+        border: 1px solid transparent;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition:
+          background-color var(--transition-fast),
+          border-color var(--transition-fast),
+          color var(--transition-fast),
+          transform var(--transition-fast);
+      }
+
+      .btn:active {
+        transform: scale(0.985);
+      }
+
+      .btn-primary {
+        background-color: var(--cinema-red);
+        color: #ffffff;
+      }
+
+      .btn-primary:hover {
+        background-color: var(--cinema-red-hover);
+      }
+
+      .btn-secondary {
+        background-color: var(--bg-input);
+        color: var(--text-primary);
+        border-color: var(--border-subtle);
+      }
+
+      .btn-secondary:hover {
+        border-color: var(--border-hover);
+        background-color: var(--bg-surface-elevated);
+      }
+
+      .btn-ghost-danger {
+        background-color: transparent;
+        color: #f87171;
+        border-color: rgba(248, 113, 113, 0.28);
+        min-height: 36px;
+        padding: 7px 13px;
+        font-size: 0.8125rem;
+      }
+
+      .btn-ghost-danger:hover {
+        background-color: rgba(229, 9, 20, 0.14);
+        border-color: rgba(248, 113, 113, 0.52);
+        color: #fecaca;
+      }
+
+      .btn-sm {
+        min-height: 38px;
+        padding: 7px 13px;
+        font-size: 0.8125rem;
+        border-radius: var(--radius-sm);
+      }
+
+      /* Highlight Revenue Banner */
+      .revenue-banner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 22px 24px;
+        background:
+          radial-gradient(circle at 0% 0%, rgba(229, 9, 20, 0.16), transparent 52%),
+          var(--bg-surface);
+        border: 1px solid var(--cinema-red-border);
+        border-radius: var(--radius-lg);
+      }
+
+      .revenue-main {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+      }
+
+      .revenue-headline {
+        margin: 0;
+        font-size: clamp(1.2rem, 2.5vw, 1.75rem);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--text-primary);
+        line-height: 1.25;
+        text-wrap: balance;
+      }
+
+      .revenue-amount {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        color: #ffffff;
+      }
+
+      .revenue-subtext {
+        margin: 0;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .cycle-countdown {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        color: var(--text-muted);
+        font-size: 0.8125rem;
+      }
+
+      .revenue-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+
+      /* Section Header */
+      .section-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .section-title {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: var(--text-primary);
+      }
+
+      .section-meta {
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* 4 Live Stat Cards */
+      .capacity-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .stat-card {
+        background-color: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 18px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .stat-label {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        letter-spacing: 0.01em;
+      }
+
+      .stat-value {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        font-size: clamp(1.65rem, 2.4vw, 2.05rem);
+        font-weight: 700;
+        line-height: 1.1;
+        color: var(--text-primary);
+      }
+
+      .stat-value--sold {
+        color: #fb7185;
+      }
+
+      .stat-value--reserved {
+        color: #fbbf24;
+      }
+
+      .stat-value--available {
+        color: #4ade80;
+      }
+
+      .stat-sublabel {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+
+      /* 190-Seat Hall 1 Visual Monitor */
+      .seat-monitor-card {
+        margin-top: 16px;
+        background-color: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .monitor-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .monitor-legend {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 16px;
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+      }
+
+      .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .legend-swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        display: inline-block;
+      }
+
+      .swatch-available {
+        background-color: #111827;
+        border: 1px solid #334155;
+      }
+
+      .swatch-reserved {
+        background-color: var(--amber);
+      }
+
+      .swatch-booked {
+        background-color: var(--cinema-red);
+      }
+
+      .mode-tabs {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px;
+        background-color: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+      }
+
+      .mode-tab {
+        min-height: 32px;
+        padding: 5px 11px;
+        border-radius: 7px;
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+        transition:
+          background-color var(--transition-fast),
+          color var(--transition-fast);
+      }
+
+      .mode-tab:hover {
+        color: var(--text-primary);
+      }
+
+      .mode-tab.active {
+        background-color: var(--bg-surface-elevated);
+        color: var(--text-primary);
+        border: 1px solid var(--border-hover);
+      }
+
+      .mode-tab.active[data-mode='booked'] {
+        background-color: var(--cinema-red);
+        border-color: var(--cinema-red);
+        color: #ffffff;
+      }
+
+      .mode-tab.active[data-mode='reserved'] {
+        background-color: var(--amber);
+        border-color: var(--amber);
+        color: #08080c;
+      }
+
+      .screen-arc-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 0 6px;
+      }
+
+      .screen-arc {
+        width: min(520px, 88%);
+        height: 6px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, transparent, #64748b 25%, #e2e8f0 50%, #64748b 75%, transparent);
+      }
+
+      .screen-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        color: var(--text-muted);
+      }
+
+      .seat-map-scroll {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+
+      .seat-map-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 640px;
+      }
+
+      .seat-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+      }
+
+      .seat-row-label {
+        width: 22px;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-align: center;
+        flex-shrink: 0;
+      }
+
+      .seat-aisle {
+        width: 14px;
+        flex-shrink: 0;
+      }
+
+      .seat-btn {
+        width: 28px;
+        height: 26px;
+        border-radius: 5px;
+        border: 1px solid #283548;
+        background-color: #0b1120;
+        color: #94a3b8;
+        font-family: var(--font-mono);
+        font-size: 0.67rem;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition:
+          transform var(--transition-fast),
+          background-color var(--transition-fast),
+          border-color var(--transition-fast),
+          color var(--transition-fast);
+      }
+
+      .seat-btn:hover {
+        border-color: #64748b;
+        color: #f8fafc;
+        transform: translateY(-1px);
+      }
+
+      .seat-btn.is-reserved {
+        background-color: var(--amber-soft);
+        border-color: var(--amber);
+        color: #fde68a;
+      }
+
+      .seat-btn.is-booked {
+        background-color: var(--cinema-red);
+        border-color: #ff4752;
+        color: #ffffff;
+        font-weight: 700;
+      }
+
+      .monitor-footer {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border-subtle);
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+      }
+
+      .occupancy-track {
+        width: 100%;
+        height: 8px;
+        border-radius: 999px;
+        background-color: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        overflow: hidden;
+        display: flex;
+      }
+
+      .occupancy-seg-sold {
+        background-color: var(--cinema-red);
+        height: 100%;
+        transition: width 220ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .occupancy-seg-reserved {
+        background-color: var(--amber);
+        height: 100%;
+        transition: width 220ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      /* 2-Column CMS Workspace */
+      .cms-workspace {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+        gap: 24px;
+        align-items: start;
+      }
+
+      .panel-card {
+        background-color: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 22px;
+      }
+
+      .panel-heading {
+        margin: 0 0 4px;
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .panel-subheading {
+        margin: 0 0 18px;
+        font-size: 0.84rem;
+        color: var(--text-secondary);
+      }
+
+      /* CMS Form */
+      .cms-form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .field-group {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+
+      .field-label {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+      }
+
+      .text-input {
+        width: 100%;
+        min-height: 44px;
+        padding: 10px 14px;
+        background-color: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        color: var(--text-primary);
+        font-size: 0.9375rem;
+        transition: border-color var(--transition-fast);
+      }
+
+      .text-input::placeholder {
+        color: var(--text-muted);
+      }
+
+      .text-input:hover {
+        border-color: var(--border-hover);
+      }
+
+      .text-input:focus {
+        outline: none;
+        border-color: var(--cinema-red);
+      }
+
+      .form-grid-2 {
+        display: grid;
+        grid-template-columns: 1.45fr 0.85fr;
+        gap: 14px;
+      }
+
+      /* Direct Phone Gallery Uploader */
+      .uploader-box {
+        position: relative;
+        background-color: var(--bg-input);
+        border: 1.5px dashed var(--border-hover);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        transition:
+          border-color var(--transition-fast),
+          background-color var(--transition-fast);
+      }
+
+      .uploader-box.drag-active {
+        border-color: var(--cinema-red);
+        background-color: rgba(229, 9, 20, 0.08);
+      }
+
+      .file-input-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .uploader-trigger {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: 6px;
+        min-height: 92px;
+        padding: 10px 12px;
+        cursor: pointer;
+        border-radius: var(--radius-sm);
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 0.92rem;
+      }
+
+      .uploader-trigger:hover {
+        color: #ffffff;
+      }
+
+      .uploader-hint {
+        font-size: 0.78rem;
+        font-weight: 400;
+        color: var(--text-muted);
+      }
+
+      .preview-row {
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+      }
+
+      .preview-row.active {
+        display: flex;
+      }
+
+      .preview-left {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-width: 0;
+      }
+
+      .preview-thumb {
+        width: 64px;
+        height: 88px;
+        object-fit: cover;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-subtle);
+        background-color: #08080c;
+        flex-shrink: 0;
+      }
+
+      .preview-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      .poster-ready-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #4ade80;
+      }
+
+      .poster-size-info {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .form-feedback {
+        display: none;
+        padding: 10px 12px;
+        border-radius: var(--radius-sm);
+        font-size: 0.84rem;
+        font-weight: 500;
+      }
+
+      .form-feedback.error {
+        display: block;
+        background-color: var(--cinema-red-soft);
+        border: 1px solid var(--cinema-red-border);
+        color: #fecaca;
+      }
+
+      /* Currently Active Movies List */
+      .movies-list {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .movie-item {
+        display: flex;
+        align-items: stretch;
+        gap: 14px;
+        padding: 14px;
+        background-color: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+      }
+
+      .movie-poster {
+        width: 72px;
+        height: 102px;
+        object-fit: cover;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-subtle);
+        background-color: #08080c;
+        flex-shrink: 0;
+      }
+
+      .movie-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .movie-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .movie-title {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1.3;
+        word-break: break-word;
+      }
+
+      .screening-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 8px;
+        border-radius: 6px;
+        background-color: var(--green-soft);
+        border: 1px solid var(--green-border);
+        color: #4ade80;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      .movie-showtimes {
+        font-size: 0.83rem;
+        color: var(--text-secondary);
+        line-height: 1.45;
+      }
+
+      .movie-bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding-top: 6px;
+        border-top: 1px solid rgba(30, 41, 59, 0.8);
+      }
+
+      .movie-price {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .empty-movies {
+        padding: 28px 18px;
+        text-align: center;
+        background-color: var(--bg-input);
+        border: 1px dashed var(--border-subtle);
+        border-radius: var(--radius-md);
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+      }
+
+      /* Sales History Table */
+      .history-card {
+        background-color: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 22px;
+      }
+
+      .history-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 16px;
+      }
+
+      .history-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .search-input {
+        min-height: 38px;
+        padding: 7px 12px;
+        width: 210px;
+        background-color: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        color: var(--text-primary);
+        font-size: 0.84rem;
+      }
+
+      .search-input::placeholder {
+        color: var(--text-muted);
+      }
+
+      .search-input:focus {
+        outline: none;
+        border-color: var(--cinema-red);
+      }
+
+      .table-scroll {
+        width: 100%;
+        overflow-x: auto;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        background-color: var(--bg-input);
+      }
+
+      table.sales-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 560px;
+        font-size: 0.875rem;
+      }
+
+      .sales-table th,
+      .sales-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      .sales-table th {
+        text-align: left;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        background-color: rgba(15, 23, 42, 0.85);
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+      }
+
+      .sales-table th.num,
+      .sales-table td.num {
+        text-align: right;
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .sales-table td.mono-date {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+
+      .sales-table tbody tr {
+        transition: background-color var(--transition-fast);
+      }
+
+      .sales-table tbody tr:hover {
+        background-color: rgba(30, 41, 59, 0.45);
+      }
+
+      .sales-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+
+      .sales-table tfoot td {
+        background-color: rgba(15, 23, 42, 0.9);
+        font-weight: 700;
+        color: var(--text-primary);
+        border-top: 1px solid var(--border-hover);
+        border-bottom: none;
+      }
+
+      .sold-ratio-muted {
+        color: var(--text-muted);
+        font-weight: 400;
+      }
+
+      /* Custom Modal */
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background-color: rgba(4, 6, 12, 0.78);
+        backdrop-filter: blur(4px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        z-index: 100;
+      }
+
+      .modal-backdrop.open {
+        display: flex;
+      }
+
+      .modal-dialog {
+        width: 100%;
+        max-width: 440px;
+        background-color: var(--bg-surface);
+        border: 1px solid var(--border-hover);
+        border-radius: var(--radius-lg);
+        padding: 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .modal-title {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .modal-body {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        line-height: 1.55;
+      }
+
+      .modal-summary {
+        background-color: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 0.85rem;
+      }
+
+      .modal-summary-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .modal-summary-val {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+
+      /* Toast Stack */
+      .toast-stack {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        z-index: 120;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 360px;
+        pointer-events: none;
+      }
+
+      .toast {
+        pointer-events: auto;
+        background-color: var(--bg-surface-elevated);
+        border: 1px solid var(--border-hover);
+        color: var(--text-primary);
+        padding: 12px 16px;
+        border-radius: var(--radius-md);
+        font-size: 0.85rem;
+        font-weight: 500;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+        opacity: 0;
+        transform: translateY(8px);
+        transition:
+          opacity 180ms cubic-bezier(0.16, 1, 0.3, 1),
+          transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .toast.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .toast--success {
+        border-color: var(--green-border);
+      }
+
+      .toast--danger {
+        border-color: var(--cinema-red-border);
+      }
+
+      /* View Switcher & Stacks */
+      .view-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      .view-stack[hidden] {
+        display: none;
+      }
+
+      .view-switcher {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px;
+        background-color: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+      }
+
+      .view-switch-btn {
+        min-height: 34px;
+        padding: 6px 12px;
+        border: 1px solid transparent;
+        border-radius: 7px;
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+        transition:
+          background-color var(--transition-fast),
+          color var(--transition-fast),
+          border-color var(--transition-fast);
+      }
+
+      .view-switch-btn:hover {
+        color: var(--text-primary);
+      }
+
+      .view-switch-btn.active {
+        background-color: var(--cinema-red);
+        color: #ffffff;
+      }
+
+      /* Live Incoming Bookings Feed */
+      .slip-thumb-btn {
+        padding: 0;
+        border: 1px solid var(--border-hover);
+        border-radius: 6px;
+        background: var(--bg-canvas);
+        cursor: pointer;
+        overflow: hidden;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding-right: 8px;
+        color: var(--text-primary);
+        font-size: 0.78rem;
+        font-weight: 600;
+      }
+
+      .slip-thumb-btn img {
+        width: 34px;
+        height: 34px;
+        object-fit: cover;
+        display: block;
+      }
+
+      .slip-thumb-btn:hover {
+        border-color: var(--cinema-red);
+      }
+
+      .seat-chip-list {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        font-weight: 700;
+        color: #fb7185;
+      }
+
+      /* Customer Booking Site */
+      .booking-hero {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 22px 24px;
+        background:
+          radial-gradient(circle at 0% 0%, rgba(229, 9, 20, 0.16), transparent 55%),
+          var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+      }
+
+      .booking-hero-title {
+        margin: 0 0 4px;
+        font-size: clamp(1.25rem, 2.5vw, 1.7rem);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--text-primary);
+      }
+
+      .booking-hero-sub {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+      }
+
+      .customer-movies-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+        gap: 16px;
+      }
+
+      .customer-movie-card {
+        display: flex;
+        gap: 16px;
+        padding: 16px;
+        background-color: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        cursor: pointer;
+        transition:
+          border-color var(--transition-fast),
+          background-color var(--transition-fast);
+      }
+
+      .customer-movie-card:hover {
+        border-color: var(--border-hover);
+      }
+
+      .customer-movie-card.selected {
+        border-color: var(--cinema-red);
+        background-color: #13182b;
+      }
+
+      .customer-movie-poster {
+        width: 90px;
+        height: 128px;
+        object-fit: cover;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-subtle);
+        background-color: #08080c;
+        flex-shrink: 0;
+      }
+
+      .customer-movie-body {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .showtime-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .showtime-chip {
+        min-height: 34px;
+        padding: 5px 11px;
+        border-radius: 7px;
+        border: 1px solid var(--border-subtle);
+        background-color: var(--bg-input);
+        color: var(--text-secondary);
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          background-color var(--transition-fast),
+          border-color var(--transition-fast),
+          color var(--transition-fast);
+      }
+
+      .showtime-chip:hover {
+        border-color: var(--border-hover);
+        color: var(--text-primary);
+      }
+
+      .showtime-chip.active {
+        background-color: var(--cinema-red);
+        border-color: var(--cinema-red);
+        color: #ffffff;
+      }
+
+      .booking-workspace {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.9fr);
+        gap: 24px;
+        align-items: start;
+      }
+
+      .seat-btn.is-selected {
+        background-color: var(--green);
+        border-color: #4ade80;
+        color: #ffffff;
+        font-weight: 700;
+      }
+
+      .seat-btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.85;
+      }
+
+      .seat-btn:disabled:hover {
+        transform: none;
+      }
+
+      .swatch-selected {
+        background-color: var(--green);
+      }
+
+      .checkout-summary-box {
+        background-color: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-size: 0.86rem;
+      }
+
+      .checkout-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .checkout-total {
+        padding-top: 8px;
+        border-top: 1px solid var(--border-subtle);
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      /* Digital E-Ticket Pass */
+      .eticket-card {
+        background:
+          radial-gradient(circle at 100% 0%, rgba(229, 9, 20, 0.14), transparent 52%),
+          var(--bg-surface);
+        border: 1px solid var(--green-border);
+        border-radius: var(--radius-lg);
+        padding: 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .eticket-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding-bottom: 14px;
+        border-bottom: 1px dashed var(--border-hover);
+      }
+
+      .eticket-ref {
+        font-family: var(--font-mono);
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #4ade80;
+      }
+
+      .eticket-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .eticket-field-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+
+      .eticket-field-value {
+        font-size: 0.94rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        word-break: break-word;
+      }
+
+      .slip-modal-img {
+        width: 100%;
+        max-height: 70vh;
+        object-fit: contain;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-subtle);
+        background-color: #08080c;
+      }
+
+      /* Responsive Breakpoints */
+      @media (max-width: 980px) {
+        .cms-workspace,
+        .booking-workspace {
+          grid-template-columns: 1fr;
+        }
+        .capacity-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 680px) {
+        .console-shell {
+          padding: 14px 14px 44px;
+          gap: 18px;
+        }
+        .console-header {
+          flex-direction: column;
+          align-items: flex-start;
+          padding: 16px;
+        }
+        .header-controls {
+          width: 100%;
+          flex-wrap: wrap;
+        }
+        .view-switcher {
+          width: 100%;
+        }
+        .view-switch-btn {
+          flex: 1;
+          text-align: center;
+        }
+        .date-badge {
+          flex: 1;
+          min-width: 200px;
+        }
+        .revenue-banner,
+        .booking-hero {
+          flex-direction: column;
+          align-items: flex-start;
+          padding: 18px;
+        }
+        .revenue-actions {
+          width: 100%;
+        }
+        .revenue-actions .btn {
+          width: 100%;
+        }
+        .capacity-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+        .stat-card {
+          padding: 14px 15px;
+        }
+        .form-grid-2,
+        .eticket-grid {
+          grid-template-columns: 1fr;
+        }
+        .search-input {
+          width: 100%;
+        }
+        .history-actions {
+          width: 100%;
+        }
+        .btn {
+          min-height: 44px;
+        }
+      }
+
+      @media print {
+        body {
+          background: #ffffff;
+          color: #000000;
+        }
+        .console-header,
+        .booking-hero,
+        .customer-movies-section,
+        .booking-workspace,
+        .toast-stack {
+          display: none !important;
+        }
+        .eticket-card {
+          border: 2px solid #000000;
+          color: #000000;
+          background: #ffffff;
+        }
+        .eticket-field-value,
+        .eticket-ref {
+          color: #000000;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="console-shell">
+      <!-- BRANDING & DASHBOARD HEADER -->
+      <header class="console-header">
+        <div class="brand-block">
+          <div class="seal-wrap" aria-hidden="true">
+            <svg
+              class="seal-svg"
+              viewBox="0 0 100 100"
+              xmlns="http://www.w3.org/2000/svg"
+              role="img"
+              aria-label="Event Cinemas Lalbandi-7 Official Seal"
+            >
+              <defs>
+                <path id="ecTopArc" d="M 15,50 A 35,35 0 1,1 85,50" fill="none" />
+                <path id="ecBottomArc" d="M 10,50 A 40,40 0 0,0 90,50" fill="none" />
+              </defs>
+              <circle cx="50" cy="50" r="47" fill="#0b162c" stroke="#cbd5e1" stroke-width="1.6" />
+              <circle cx="50" cy="50" r="43.5" fill="none" stroke="#e50914" stroke-width="1.2" stroke-opacity="0.92" />
+              <circle cx="50" cy="50" r="28" fill="#080e1c" stroke="#334155" stroke-width="1" />
+
+              <text
+                font-size="8.2"
+                font-weight="800"
+                letter-spacing="1.45"
+                fill="#f8fafc"
+                font-family="'Plus Jakarta Sans', 'Segoe UI', sans-serif"
+              >
+                <textPath href="#ecTopArc" startOffset="50%" text-anchor="middle">
+                  EVENT CINEMAS
+                </textPath>
+              </text>
+              <text
+                font-size="7.8"
+                font-weight="700"
+                letter-spacing="1.6"
+                fill="#cbd5e1"
+                font-family="'Plus Jakarta Sans', 'Segoe UI', sans-serif"
+              >
+                <textPath href="#ecBottomArc" startOffset="50%" text-anchor="middle">
+                  LALBANDI-7
+                </textPath>
+              </text>
+
+              <g transform="translate(50, 51)">
+                <g transform="rotate(-11 -16 -6)">
+                  <rect x="-16" y="-13" width="32" height="7" rx="1.2" fill="#f8fafc" />
+                  <polygon points="-13,-13 -8,-13 -11,-6 -16,-6" fill="#e50914" />
+                  <polygon points="-3,-13 2,-13 -1,-6 -6,-6" fill="#0b162c" />
+                  <polygon points="7,-13 12,-13 9,-6 4,-6" fill="#e50914" />
+                </g>
+                <rect x="-16" y="-6" width="32" height="20" rx="2.4" fill="#1e293b" stroke="#e2e8f0" stroke-width="1.2" />
+                <line x1="-16" y1="-1" x2="16" y2="-1" stroke="#475569" stroke-width="0.9" />
+                <text
+                  x="0"
+                  y="11"
+                  text-anchor="middle"
+                  font-size="11.5"
+                  font-weight="800"
+                  letter-spacing="0.8"
+                  fill="#ffffff"
+                  font-family="'Plus Jakarta Sans', 'Segoe UI', sans-serif"
+                >
+                  EC
+                </text>
+              </g>
+            </svg>
+          </div>
+
+          <div class="brand-copy">
+            <h1 class="brand-title" id="headerTitleText">Event Cinemas — Admin Console</h1>
+            <p class="brand-subtitle">Gole Complex • Lalbandi-7, Sarlahi</p>
+          </div>
+        </div>
+
+        <div class="header-controls">
+          <div class="view-switcher" role="tablist" aria-label="Console view mode">
+            <button
+              type="button"
+              class="view-switch-btn active"
+              id="switchAdminBtn"
+              data-view="admin"
+              role="tab"
+              aria-selected="true"
+            >
+              Admin Console
+            </button>
+            <button
+              type="button"
+              class="view-switch-btn"
+              id="switchBookingBtn"
+              data-view="booking"
+              role="tab"
+              aria-selected="false"
+            >
+              Customer Booking Site
+            </button>
+          </div>
+
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            id="copyBookingLinkBtn"
+            title="Copy direct customer booking site URL"
+          >
+            Copy User Link
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            id="bellTestBtn"
+            title="Unlock audio & test reception booking chime"
+          >
+            🔔 Test Bell
+          </button>
+
+          <div class="date-badge" id="liveDateBadge" aria-live="polite">
+            <svg
+              class="date-badge-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span id="liveDateText">Loading date...</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- ================================================================= -->
+      <!-- ADMIN CONSOLE VIEW                                                -->
+      <!-- ================================================================= -->
+      <div id="adminConsoleView" class="view-stack">
+
+      <!-- 24-HOUR AUTO-RESET ENGINE & LIVE REVENUE BANNER -->
+      <section class="revenue-banner" aria-label="Today's Online Ticket Collection">
+        <div class="revenue-main">
+          <h2 class="revenue-headline">
+            Today's Online Ticket Collection:
+            <span class="revenue-amount" id="todayRevenueDisplay">Rs. 0</span>
+          </h2>
+          <p class="revenue-subtext">
+            <span>Automated 24h cycle resets at 12:00 AM</span>
+            <span class="cycle-countdown" id="midnightCountdown">Next reset in --:--:--</span>
+          </p>
+        </div>
+        <div class="revenue-actions">
+          <button type="button" class="btn btn-primary" id="manualResetBtn">
+            ↻ Reset Day
+          </button>
+        </div>
+      </section>
+
+      <!-- LIVE 190-SEAT CAPACITY METRICS & MONITOR -->
+      <section aria-label="Live 190-Seat Capacity Metrics and Hall 1 Monitor">
+        <div class="section-header">
+          <h2 class="section-title">Hall 1 Realtime Capacity &amp; 190-Seat Monitor</h2>
+          <span class="section-meta" id="occupancyPctLabel">0% Occupied</span>
+        </div>
+
+        <div class="capacity-grid">
+          <article class="stat-card">
+            <span class="stat-label">Total Seats</span>
+            <span class="stat-value" id="statTotalSeats">190</span>
+            <span class="stat-sublabel">Hall 1 Capacity</span>
+          </article>
+
+          <article class="stat-card">
+            <span class="stat-label">Tickets Sold</span>
+            <span class="stat-value stat-value--sold" id="statTicketsSold">0</span>
+            <span class="stat-sublabel">Live count from Firebase</span>
+          </article>
+
+          <article class="stat-card">
+            <span class="stat-label">Reserved</span>
+            <span class="stat-value stat-value--reserved" id="statReserved">0</span>
+            <span class="stat-sublabel">Pending count</span>
+          </article>
+
+          <article class="stat-card">
+            <span class="stat-label">Available Seats</span>
+            <span class="stat-value stat-value--available" id="statAvailable">190</span>
+            <span class="stat-sublabel">Remaining out of 190</span>
+          </article>
+        </div>
+
+        <div class="seat-monitor-card">
+          <div class="monitor-toolbar">
+            <div class="monitor-legend">
+              <span class="legend-item">
+                <span class="legend-swatch swatch-available"></span>
+                Available (<span id="legendAvailable">190</span>)
+              </span>
+              <span class="legend-item">
+                <span class="legend-swatch swatch-reserved"></span>
+                Reserved (<span id="legendReserved">0</span>)
+              </span>
+              <span class="legend-item">
+                <span class="legend-swatch swatch-booked"></span>
+                Booked (<span id="legendBooked">0</span>)
+              </span>
+            </div>
+
+            <div class="mode-tabs" role="group" aria-label="Seat click action mode">
+              <button type="button" class="mode-tab active" data-mode="booked">
+                Mark Booked
+              </button>
+              <button type="button" class="mode-tab" data-mode="reserved">
+                Mark Reserved
+              </button>
+              <button type="button" class="mode-tab" data-mode="available">
+                Release Seat
+              </button>
+            </div>
+          </div>
+
+          <div class="occupancy-track" aria-hidden="true">
+            <div class="occupancy-seg-sold" id="barSold" style="width: 0%"></div>
+            <div class="occupancy-seg-reserved" id="barReserved" style="width: 0%"></div>
+          </div>
+
+          <div class="screen-arc-wrap" aria-hidden="true">
+            <div class="screen-arc"></div>
+            <span class="screen-label">SCREEN • HALL 1 (190 SEATS)</span>
+          </div>
+
+          <div class="seat-map-scroll">
+            <div class="seat-map-grid" id="seatMapGrid" role="grid" aria-label="190-seat layout"></div>
+          </div>
+
+          <div class="monitor-footer">
+            <span id="activeRateInfo">Active ticket rate: Rs. 250</span>
+            <span>Incoming Firebase bookings automatically play the bell chime and mark seats red</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- FACEBOOK-STYLE MOVIE POSTING CMS + ACTIVE MOVIES -->
+      <section class="cms-workspace" aria-label="Movie Posting CMS and Active Screenings">
+        <div class="panel-card">
+          <h2 class="panel-heading">🎬 Post a New Movie / Update Schedule</h2>
+          <p class="panel-subheading">
+            Upload a poster from your phone gallery and push live showtimes to Event Cinemas customer screens.
+          </p>
+
+          <form class="cms-form" id="moviePostForm" novalidate>
+            <div class="field-group">
+              <label class="field-label" for="movieTitleInput">Movie Title</label>
+              <input
+                id="movieTitleInput"
+                class="text-input"
+                type="text"
+                placeholder="Enter movie title"
+                maxlength="90"
+                required
+              />
+            </div>
+
+            <div class="field-group">
+              <span class="field-label">Movie Poster</span>
+              <div class="uploader-box" id="uploaderDropzone">
+                <input
+                  id="posterFileInput"
+                  class="file-input-hidden"
+                  type="file"
+                  accept="image/*"
+                />
+                <label class="uploader-trigger" for="posterFileInput" id="uploaderTrigger">
+                  <span>📷 Tap to Choose Poster from Phone Gallery</span>
+                  <span class="uploader-hint" id="uploaderStatusText">
+                    Auto-resized &amp; compressed via Canvas (~40 KB JPEG Base64)
+                  </span>
+                </label>
+
+                <div class="preview-row" id="posterPreviewRow">
+                  <div class="preview-left">
+                    <img
+                      id="posterPreviewImg"
+                      class="preview-thumb"
+                      src=""
+                      alt="Selected movie poster preview"
+                    />
+                    <div class="preview-meta">
+                      <span class="poster-ready-tag">✓ Poster Ready</span>
+                      <span class="poster-size-info" id="posterSizeInfo">Compressed JPEG</span>
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-ghost-danger" id="removePosterBtn">
+                    ✕ Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="field-group">
+                <label class="field-label" for="showtimesInput">Showtimes</label>
+                <input
+                  id="showtimesInput"
+                  class="text-input"
+                  type="text"
+                  placeholder="11:30 AM, 02:45 PM"
+                  value="11:30 AM, 02:45 PM"
+                  required
+                />
+              </div>
+
+              <div class="field-group">
+                <label class="field-label" for="ticketPriceInput">Ticket Price (NPR)</label>
+                <input
+                  id="ticketPriceInput"
+                  class="text-input"
+                  type="number"
+                  min="50"
+                  max="5000"
+                  step="10"
+                  value="250"
+                  required
+                />
+              </div>
+            </div>
+
+            <div class="form-feedback" id="formFeedback" role="alert"></div>
+
+            <button type="submit" class="btn btn-primary" id="publishMovieBtn">
+              📢 Publish Movie to Booking Site
+            </button>
+          </form>
+        </div>
+
+        <div class="panel-card">
+          <div class="section-header" style="margin-bottom: 14px">
+            <div>
+              <h2 class="panel-heading">Currently Active Movies on Site</h2>
+              <p class="panel-subheading" style="margin-bottom: 0">
+                Real-time schedule synced with Firebase active_movies
+              </p>
+            </div>
+            <span class="section-meta" id="activeMoviesCount">0 active</span>
+          </div>
+
+          <div class="movies-list" id="activeMoviesList"></div>
+        </div>
+      </section>
+
+      <!-- DAY-BY-DAY SALES HISTORY LOG -->
+      <section class="history-card" aria-label="Day-by-Day Sales History Log">
+        <div class="history-toolbar">
+          <div>
+            <h2 class="panel-heading">Day-by-Day Sales History Log</h2>
+            <p class="panel-subheading" style="margin-bottom: 0">
+              Archived daily Hall 1 ticket sales and total revenue
+            </p>
+          </div>
+
+          <div class="history-actions">
+            <input
+              type="search"
+              id="historySearchInput"
+              class="search-input"
+              placeholder="Filter by date or day..."
+              aria-label="Filter sales history by date or day of week"
+            />
+            <button type="button" class="btn btn-secondary btn-sm" id="exportCsvBtn">
+              Download CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table class="sales-table">
+            <thead>
+              <tr>
+                <th scope="col">Date (YYYY-MM-DD)</th>
+                <th scope="col">Day of Week</th>
+                <th scope="col" class="num">Tickets Sold (/190)</th>
+                <th scope="col" class="num">Total Revenue (Rs.)</th>
+              </tr>
+            </thead>
+            <tbody id="salesHistoryBody"></tbody>
+            <tfoot id="salesHistoryFoot"></tfoot>
+          </table>
+        </div>
+      </section>
+
+      <!-- LIVE INCOMING TICKET BOOKINGS & UPLOADED SLIPS -->
+      <section class="history-card" aria-label="Live Ticket Bookings and Uploaded Slips">
+        <div class="history-toolbar">
+          <div>
+            <h2 class="panel-heading">Live Ticket Bookings &amp; Uploaded Tickets</h2>
+            <p class="panel-subheading" style="margin-bottom: 0">
+              Real-time bookings from customer screens and box-office uploads for today's shift
+            </p>
+          </div>
+          <span class="section-meta" id="liveBookingsCount">0 bookings today</span>
+        </div>
+
+        <div class="table-scroll">
+          <table class="sales-table">
+            <thead>
+              <tr>
+                <th scope="col">Booking Ref</th>
+                <th scope="col">Patron</th>
+                <th scope="col">Movie &amp; Showtime</th>
+                <th scope="col">Seats</th>
+                <th scope="col">Uploaded Slip</th>
+                <th scope="col" class="num">Amount (Rs.)</th>
+                <th scope="col" class="num">Action</th>
+              </tr>
+            </thead>
+            <tbody id="liveBookingsBody"></tbody>
+          </table>
+        </div>
+      </section>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- CUSTOMER BOOKING SITE VIEW ("USERS CAN SEE THAT")                  -->
+      <!-- ================================================================= -->
+      <div id="customerBookingView" class="view-stack" hidden>
+        <section class="booking-hero" aria-label="Event Cinemas Now Screening Banner">
+          <div>
+            <h2 class="booking-hero-title">Book Tickets — Hall 1 (190 Seats)</h2>
+            <p class="booking-hero-sub">
+              Live showtimes, real-time seat availability, and instant digital ticket confirmation at Gole Complex, Lalbandi-7.
+            </p>
+          </div>
+          <span class="section-meta" id="customerAvailableBadge">190 seats open</span>
+        </section>
+
+        <!-- Active Movies Published by Admin -->
+        <section class="customer-movies-section" aria-label="Now Screening Movies">
+          <div class="section-header">
+            <h2 class="section-title">Now Screening at Event Cinemas</h2>
+            <span class="section-meta" id="customerMoviesCount">0 shows available</span>
+          </div>
+          <div id="customerMoviesGrid" class="customer-movies-grid"></div>
+        </section>
+
+        <!-- Customer 190-Seat Selector & Ticket Upload Checkout -->
+        <section class="booking-workspace" aria-label="Seat Selection and Ticket Booking Upload">
+          <div class="panel-card">
+            <div class="monitor-toolbar" style="margin-bottom: 14px">
+              <div>
+                <h2 class="panel-heading" style="margin-bottom: 2px">Select Your Seats (Hall 1)</h2>
+                <p class="panel-subheading" style="margin-bottom: 0">
+                  Tap any open seat to select. Booked seats update live.
+                </p>
+              </div>
+              <div class="monitor-legend">
+                <span class="legend-item">
+                  <span class="legend-swatch swatch-available"></span>
+                  Open
+                </span>
+                <span class="legend-item">
+                  <span class="legend-swatch swatch-selected"></span>
+                  Selected (<span id="customerSelectedCount">0</span>)
+                </span>
+                <span class="legend-item">
+                  <span class="legend-swatch swatch-reserved"></span>
+                  Reserved
+                </span>
+                <span class="legend-item">
+                  <span class="legend-swatch swatch-booked"></span>
+                  Booked
+                </span>
+              </div>
+            </div>
+
+            <div class="screen-arc-wrap" aria-hidden="true">
+              <div class="screen-arc"></div>
+              <span class="screen-label">SCREEN • HALL 1</span>
+            </div>
+
+            <div class="seat-map-scroll">
+              <div class="seat-map-grid" id="customerSeatMapGrid" role="grid" aria-label="Customer 190-seat selector"></div>
+            </div>
+          </div>
+
+          <!-- Customer Ticket Booking & Slip Upload Form -->
+          <div class="panel-card">
+            <h2 class="panel-heading">🎟️ Upload Ticket / Confirm Booking</h2>
+            <p class="panel-subheading">
+              Complete your booking to receive an instant digital e-ticket pass.
+            </p>
+
+            <form class="cms-form" id="customerBookingForm" novalidate>
+              <div class="field-group">
+                <label class="field-label" for="customerNameInput">Full Name</label>
+                <input
+                  id="customerNameInput"
+                  class="text-input"
+                  type="text"
+                  placeholder="Enter patron full name"
+                  maxlength="60"
+                  required
+                />
+              </div>
+
+              <div class="field-group">
+                <label class="field-label" for="customerPhoneInput">Mobile Number</label>
+                <input
+                  id="customerPhoneInput"
+                  class="text-input"
+                  type="tel"
+                  placeholder="98XXXXXXXX"
+                  maxlength="20"
+                  required
+                />
+              </div>
+
+              <div class="field-group">
+                <span class="field-label">Payment / Ticket Slip (Optional)</span>
+                <div class="uploader-box" id="customerSlipDropzone">
+                  <input
+                    id="customerSlipFileInput"
+                    class="file-input-hidden"
+                    type="file"
+                    accept="image/*"
+                  />
+                  <label class="uploader-trigger" for="customerSlipFileInput" id="customerSlipTrigger">
+                    <span>📷 Tap to Upload Payment / Ticket Slip</span>
+                    <span class="uploader-hint" id="customerSlipStatusText">
+                      Auto-compressed via Canvas (~35 KB JPEG)
+                    </span>
+                  </label>
+
+                  <div class="preview-row" id="customerSlipPreviewRow">
+                    <div class="preview-left">
+                      <img
+                        id="customerSlipPreviewImg"
+                        class="preview-thumb"
+                        src=""
+                        alt="Uploaded payment slip preview"
+                      />
+                      <div class="preview-meta">
+                        <span class="poster-ready-tag">✓ Slip Ready</span>
+                        <span class="poster-size-info" id="customerSlipSizeInfo">Compressed JPEG</span>
+                      </div>
+                    </div>
+                    <button type="button" class="btn btn-ghost-danger" id="removeCustomerSlipBtn">
+                      ✕ Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="checkout-summary-box">
+                <div class="checkout-row">
+                  <span style="color: var(--text-secondary)">Selected Movie</span>
+                  <span id="summaryMovieTitle" style="font-weight: 600; text-align: right">None selected</span>
+                </div>
+                <div class="checkout-row">
+                  <span style="color: var(--text-secondary)">Showtime</span>
+                  <span id="summaryShowtime" style="font-family: var(--font-mono)">—</span>
+                </div>
+                <div class="checkout-row">
+                  <span style="color: var(--text-secondary)">Seats</span>
+                  <span id="summarySeats" class="seat-chip-list">None</span>
+                </div>
+                <div class="checkout-row checkout-total">
+                  <span>Total Payable</span>
+                  <span id="summaryTotalAmount" style="font-family: var(--font-mono)">Rs. 0</span>
+                </div>
+              </div>
+
+              <div class="form-feedback" id="customerFormFeedback" role="alert"></div>
+
+              <button type="submit" class="btn btn-primary" id="submitCustomerBookingBtn">
+                🎟️ Confirm &amp; Upload Ticket Booking
+              </button>
+            </form>
+          </div>
+        </section>
+
+        <!-- Confirmed Digital E-Ticket Pass (Displayed Immediately After Booking) -->
+        <section id="confirmedTicketSection" hidden aria-label="Confirmed Digital E-Ticket">
+          <div class="eticket-card">
+            <div class="eticket-header">
+              <div>
+                <h2 class="panel-heading" style="margin-bottom: 2px">Event Cinemas — Confirmed E-Ticket</h2>
+                <span style="font-size: 0.84rem; color: var(--text-secondary)">
+                  Gole Complex • Lalbandi-7, Sarlahi • Hall 1
+                </span>
+              </div>
+              <span class="eticket-ref" id="eticketRef">#EC-0000</span>
+            </div>
+
+            <div class="eticket-grid">
+              <div>
+                <div class="eticket-field-label">Movie</div>
+                <div class="eticket-field-value" id="eticketMovie">—</div>
+              </div>
+              <div>
+                <div class="eticket-field-label">Showtime</div>
+                <div class="eticket-field-value" id="eticketShowtime">—</div>
+              </div>
+              <div>
+                <div class="eticket-field-label">Seats</div>
+                <div class="eticket-field-value seat-chip-list" id="eticketSeats">—</div>
+              </div>
+              <div>
+                <div class="eticket-field-label">Total Amount</div>
+                <div class="eticket-field-value" id="eticketAmount" style="font-family: var(--font-mono)">Rs. 0</div>
+              </div>
+              <div>
+                <div class="eticket-field-label">Patron</div>
+                <div class="eticket-field-value" id="eticketPatron">—</div>
+              </div>
+              <div>
+                <div class="eticket-field-label">Status</div>
+                <div class="eticket-field-value" style="color: #4ade80">CONFIRMED • LIVE SYNCED</div>
+              </div>
+            </div>
+
+            <div id="eticketSlipWrap" hidden>
+              <div class="eticket-field-label" style="margin-bottom: 6px">Attached Ticket / Payment Slip</div>
+              <img id="eticketSlipImg" class="preview-thumb" src="" alt="Attached ticket slip" />
+            </div>
+
+            <div class="modal-actions" style="justify-content: flex-start">
+              <button type="button" class="btn btn-secondary btn-sm" id="printTicketBtn">
+                Print / Save E-Ticket
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Custom Confirmation Modal for Manual Reset Day -->
+    <div
+      class="modal-backdrop"
+      id="resetModalBackdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="resetModalTitle"
+    >
+      <div class="modal-dialog">
+        <h3 class="modal-title" id="resetModalTitle">Archive Shift &amp; Reset Day?</h3>
+        <p class="modal-body">
+          This will archive today's tickets sold and revenue into the Day-by-Day Sales History Log
+          and reset today's seat map and counters to zero for the next shift.
+        </p>
+        <div class="modal-summary">
+          <div class="modal-summary-row">
+            <span>Shift Date</span>
+            <span class="modal-summary-val" id="modalShiftDate">----</span>
+          </div>
+          <div class="modal-summary-row">
+            <span>Tickets Sold</span>
+            <span class="modal-summary-val" id="modalShiftTickets">0 / 190</span>
+          </div>
+          <div class="modal-summary-row">
+            <span>Total Revenue</span>
+            <span class="modal-summary-val" id="modalShiftRevenue">Rs. 0</span>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary btn-sm" id="cancelResetBtn">
+            Cancel
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" id="confirmResetBtn">
+            ↻ Confirm Reset Day
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal to Preview Uploaded Ticket/Payment Slip -->
+    <div
+      class="modal-backdrop"
+      id="slipModalBackdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="slipModalTitle"
+    >
+      <div class="modal-dialog" style="max-width: 540px">
+        <h3 class="modal-title" id="slipModalTitle">Uploaded Ticket / Payment Slip</h3>
+        <img id="slipModalImg" class="slip-modal-img" src="" alt="Full uploaded ticket slip" />
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary btn-sm" id="closeSlipModalBtn">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Stack -->
+    <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+    <script>
+      (function () {
+        'use strict';
+
+        // =========================================================================
+        // FIREBASE INITIALIZATION — EVENT CINEMAS (event-cinema-ticket)
+        // =========================================================================
+        const firebaseConfig = {
+          apiKey: 'AIzaSyAMY63jHY8YfWidX_fwJHbu_j0NgpRwoCE',
+          authDomain: 'event-cinema-ticket.firebaseapp.com',
+          databaseURL: 'https://event-cinema-ticket-default-rtdb.firebaseio.com',
+          projectId: 'event-cinema-ticket',
+          storageBucket: 'event-cinema-ticket.firebasestorage.app',
+          messagingSenderId: '79304425831',
+          appId: '1:79304425831:web:4bb53c018eb68ef1322fc2',
+          measurementId: 'G-L2E7XLKWKM'
+        };
+
+        let app = null;
+        let analytics = null;
+        let db = null;
+
+        if (typeof firebase !== 'undefined') {
+          try {
+            app = firebase.apps.length
+              ? firebase.app()
+              : firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+            if (typeof firebase.analytics === 'function') {
+              analytics = firebase.analytics();
+            }
+          } catch (err) {
+            console.warn('Firebase initialization warning:', err);
+          }
+        }
+
+        // =========================================================================
+        // CONSTANTS & STORAGE KEYS
+        // =========================================================================
+        const HALL_CAPACITY = 190;
+        const SEAT_ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']; // 10 rows
+        const SEATS_PER_ROW = 19; // 10 * 19 = 190 seats
+        const DEFAULT_TICKET_PRICE = 250;
+
+        const STORAGE_KEYS = {
+          ACTIVE_DATE: 'ec_erp_active_date_v1',
+          TODAY_STATS: 'ec_erp_today_stats_v1',
+          SEAT_STATES: 'ec_erp_seat_states_v1',
+          PROCESSED_BOOKINGS: 'ec_erp_processed_bookings_v1',
+          LIVE_BOOKINGS: 'ec_erp_live_bookings_v1',
+          MOVIES: 'ec_erp_active_movies_v1',
+          HISTORY: 'ec_erp_sales_history_v1'
+        };
+
+        const syncChannel =
+          typeof BroadcastChannel !== 'undefined'
+            ? new BroadcastChannel('event_cinemas_live_v1')
+            : null;
+
+        const DAYS_OF_WEEK = [
+          'Sunday',
+          'Monday',
+          'Tuesday',
+          'Wednesday',
+          'Thursday',
+          'Friday',
+          'Saturday'
+        ];
+
+        // =========================================================================
+        // WEB AUDIO SYNTHESIZER — LOUD TWO-TONE RECEPTION BELL CHIME
+        // =========================================================================
+        let audioCtx = null;
+
+        function ensureAudioContext() {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return null;
+          if (!audioCtx) {
+            audioCtx = new AudioCtx();
+          }
+          if (audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(function () {});
+          }
+          return audioCtx;
+        }
+
+        function playOrderBell() {
+          try {
+            const ctx = ensureAudioContext();
+            if (!ctx) return;
+            const now = ctx.currentTime;
+
+            function strikeBell(startTime, fundamentalFreq, decaySec, gainPeak) {
+              const fundamental = ctx.createOscillator();
+              const harmonic = ctx.createOscillator();
+              const shimmer = ctx.createOscillator();
+              const masterGain = ctx.createGain();
+              const harmonicGain = ctx.createGain();
+              const shimmerGain = ctx.createGain();
+
+              fundamental.type = 'sine';
+              fundamental.frequency.setValueAtTime(fundamentalFreq, startTime);
+
+              harmonic.type = 'triangle';
+              harmonic.frequency.setValueAtTime(fundamentalFreq * 2.0, startTime);
+              harmonicGain.gain.setValueAtTime(0.32, startTime);
+
+              shimmer.type = 'sine';
+              shimmer.frequency.setValueAtTime(fundamentalFreq * 3.01, startTime);
+              shimmerGain.gain.setValueAtTime(0.14, startTime);
+
+              masterGain.gain.setValueAtTime(0.001, startTime);
+              masterGain.gain.exponentialRampToValueAtTime(gainPeak, startTime + 0.01);
+              masterGain.gain.exponentialRampToValueAtTime(0.0008, startTime + decaySec);
+
+              fundamental.connect(masterGain);
+              harmonic.connect(harmonicGain);
+              harmonicGain.connect(masterGain);
+              shimmer.connect(shimmerGain);
+              shimmerGain.connect(masterGain);
+              masterGain.connect(ctx.destination);
+
+              fundamental.start(startTime);
+              harmonic.start(startTime);
+              shimmer.start(startTime);
+              fundamental.stop(startTime + decaySec);
+              harmonic.stop(startTime + decaySec);
+              shimmer.stop(startTime + decaySec);
+            }
+
+            // Crisp two-tone reception bell (B5 -> E6)
+            strikeBell(now, 987.77, 0.55, 0.58);
+            strikeBell(now + 0.14, 1318.51, 0.85, 0.68);
+          } catch (err) {
+            // Audio blocked until user interaction
+          }
+        }
+
+        // Unlock AudioContext on first user gesture
+        ['pointerdown', 'keydown'].forEach(function (evtName) {
+          document.addEventListener(
+            evtName,
+            function unlockOnce() {
+              ensureAudioContext();
+            },
+            { once: true, passive: true }
+          );
+        });
+
+        // =========================================================================
+        // DATE & FORMATTING UTILITIES
+        // =========================================================================
+        function formatISODate(dateObj) {
+          const y = dateObj.getFullYear();
+          const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+          const d = String(dateObj.getDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        }
+
+        function parseISODate(isoStr) {
+          const parts = isoStr.split('-').map(Number);
+          return new Date(parts[0], parts[1] - 1, parts[2]);
+        }
+
+        function getDayOfWeek(isoStr) {
+          return DAYS_OF_WEEK[parseISODate(isoStr).getDay()];
+        }
+
+        function formatDisplayDate(dateObj) {
+          return dateObj.toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          });
+        }
+
+        function formatNPR(amount) {
+          const num = Math.max(0, Math.round(Number(amount) || 0));
+          return `Rs. ${num.toLocaleString('en-IN')}`;
+        }
+
+        function escapeHTML(str) {
+          const div = document.createElement('div');
+          div.textContent = String(str == null ? '' : str);
+          return div.innerHTML;
+        }
+
+        // =========================================================================
+        // STATE (ZERO FAKE DATA)
+        // =========================================================================
+        const ALL_SEAT_IDS = [];
+        SEAT_ROWS.forEach(function (rowLetter) {
+          for (let n = 1; n <= SEATS_PER_ROW; n++) {
+            ALL_SEAT_IDS.push(`${rowLetter}${n}`);
+          }
+        });
+
+        let state = {
+          activeDate: formatISODate(new Date()),
+          ticketsSold: 0,
+          reserved: 0,
+          revenue: 0,
+          seatStates: {}, // seatId -> 'booked' | 'reserved'
+          processedBookingIds: {},
+          liveBookings: [],
+          movies: [],
+          history: []
+        };
+
+        let seatClickMode = 'booked'; // 'booked' | 'reserved' | 'available'
+        let pendingPosterDataUrl = '';
+        let activeView = 'admin'; // 'admin' | 'booking'
+        let selectedCustomerMovieId = '';
+        let selectedCustomerShowtime = '';
+        let customerSelectedSeats = [];
+        let pendingCustomerSlipDataUrl = '';
+
+        // =========================================================================
+        // PERSISTENCE & CROSS-TAB SYNC
+        // =========================================================================
+        function saveState(shouldBroadcast) {
+          try {
+            localStorage.setItem(STORAGE_KEYS.ACTIVE_DATE, state.activeDate);
+            localStorage.setItem(
+              STORAGE_KEYS.TODAY_STATS,
+              JSON.stringify({
+                ticketsSold: state.ticketsSold,
+                reserved: state.reserved,
+                revenue: state.revenue
+              })
+            );
+            localStorage.setItem(STORAGE_KEYS.SEAT_STATES, JSON.stringify(state.seatStates));
+            localStorage.setItem(
+              STORAGE_KEYS.PROCESSED_BOOKINGS,
+              JSON.stringify(state.processedBookingIds)
+            );
+            localStorage.setItem(
+              STORAGE_KEYS.LIVE_BOOKINGS,
+              JSON.stringify(state.liveBookings)
+            );
+            localStorage.setItem(STORAGE_KEYS.MOVIES, JSON.stringify(state.movies));
+            localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(state.history));
+            if (shouldBroadcast && syncChannel) {
+              syncChannel.postMessage({ type: 'state_updated', at: Date.now() });
+            }
+          } catch (err) {
+            showToast('Browser storage is full. Remove an older movie poster.', 'danger');
+          }
+        }
+
+        function syncSeatStatesToFirebase() {
+          if (!db) return;
+          const payload = Object.keys(state.seatStates).length > 0 ? state.seatStates : false;
+          db.ref('seat_states')
+            .set(payload)
+            .catch(function () {});
+        }
+
+        function syncMoviesToFirebase(latestMovie) {
+          if (!db) return;
+          if (latestMovie) {
+            db.ref('active_movies')
+              .set({
+                title: latestMovie.title,
+                poster: latestMovie.poster,
+                times: latestMovie.times,
+                price: latestMovie.price,
+                updatedAt: latestMovie.updatedAt || Date.now()
+              })
+              .catch(function () {
+                showToast('Firebase sync failed; saved locally.', 'danger');
+              });
+          } else {
+            db.ref('active_movies').remove().catch(function () {});
+          }
+          const catalogPayload = state.movies.length > 0 ? state.movies : false;
+          db.ref('active_movies_catalog')
+            .set(catalogPayload)
+            .catch(function () {});
+        }
+
+        function loadState() {
+          const todayIso = formatISODate(new Date());
+          const savedDate = localStorage.getItem(STORAGE_KEYS.ACTIVE_DATE);
+          const savedStatsRaw = localStorage.getItem(STORAGE_KEYS.TODAY_STATS);
+          const savedSeatsRaw = localStorage.getItem(STORAGE_KEYS.SEAT_STATES);
+          const savedProcessedRaw = localStorage.getItem(STORAGE_KEYS.PROCESSED_BOOKINGS);
+          const savedBookingsRaw = localStorage.getItem(STORAGE_KEYS.LIVE_BOOKINGS);
+          const savedMoviesRaw = localStorage.getItem(STORAGE_KEYS.MOVIES);
+          const savedHistoryRaw = localStorage.getItem(STORAGE_KEYS.HISTORY);
+
+          try {
+            state.history = savedHistoryRaw ? JSON.parse(savedHistoryRaw) || [] : [];
+          } catch (e) {
+            state.history = [];
+          }
+
+          try {
+            state.movies = savedMoviesRaw ? JSON.parse(savedMoviesRaw) || [] : [];
+          } catch (e) {
+            state.movies = [];
+          }
+
+          try {
+            state.seatStates = savedSeatsRaw ? JSON.parse(savedSeatsRaw) || {} : {};
+          } catch (e) {
+            state.seatStates = {};
+          }
+
+          try {
+            state.processedBookingIds = savedProcessedRaw ? JSON.parse(savedProcessedRaw) || {} : {};
+          } catch (e) {
+            state.processedBookingIds = {};
+          }
+
+          try {
+            state.liveBookings = savedBookingsRaw ? JSON.parse(savedBookingsRaw) || [] : [];
+          } catch (e) {
+            state.liveBookings = [];
+          }
+
+          if (savedDate && savedStatsRaw) {
+            try {
+              const parsed = JSON.parse(savedStatsRaw);
+              state.activeDate = savedDate;
+              state.ticketsSold = Math.max(0, Math.min(HALL_CAPACITY, Number(parsed.ticketsSold) || 0));
+              state.reserved = Math.max(
+                0,
+                Math.min(HALL_CAPACITY - state.ticketsSold, Number(parsed.reserved) || 0)
+              );
+              state.revenue = Math.max(0, Number(parsed.revenue) || 0);
+            } catch (e) {
+              state.activeDate = todayIso;
+            }
+          } else {
+            state.activeDate = todayIso;
+          }
+
+          reconcileSeatCounts();
+          saveState(false);
+        }
+
+        function reconcileSeatCounts() {
+          let bookedCount = 0;
+          let reservedCount = 0;
+          Object.keys(state.seatStates).forEach(function (id) {
+            if (state.seatStates[id] === 'booked') bookedCount += 1;
+            else if (state.seatStates[id] === 'reserved') reservedCount += 1;
+          });
+
+          if (bookedCount > state.ticketsSold) {
+            state.ticketsSold = Math.min(HALL_CAPACITY, bookedCount);
+          }
+          if (reservedCount > state.reserved) {
+            state.reserved = Math.min(HALL_CAPACITY - state.ticketsSold, reservedCount);
+          }
+        }
+
+        function markSeatsBookedOnMonitor(seatIds, fallbackCount) {
+          let marked = 0;
+          if (Array.isArray(seatIds) && seatIds.length > 0) {
+            seatIds.forEach(function (rawId) {
+              const cleanId = String(rawId).trim().toUpperCase();
+              if (ALL_SEAT_IDS.includes(cleanId) && state.seatStates[cleanId] !== 'booked') {
+                state.seatStates[cleanId] = 'booked';
+                marked += 1;
+              }
+            });
+          }
+
+          const remainingToMark = Math.max(0, (fallbackCount || 0) - marked);
+          if (remainingToMark > 0) {
+            let count = 0;
+            for (let i = 0; i < ALL_SEAT_IDS.length && count < remainingToMark; i++) {
+              const id = ALL_SEAT_IDS[i];
+              if (!state.seatStates[id]) {
+                state.seatStates[id] = 'booked';
+                count += 1;
+              }
+            }
+          }
+        }
+
+        function getActiveTicketPrice() {
+          if (state.movies.length > 0 && Number(state.movies[0].price) > 0) {
+            return Number(state.movies[0].price);
+          }
+          return DEFAULT_TICKET_PRICE;
+        }
+
+        // =========================================================================
+        // 24-HOUR AUTO-RESET ENGINE & HISTORY ARCHIVE
+        // =========================================================================
+        function archiveDateEntry(dateIso, ticketsSold, revenue) {
+          const dayName = getDayOfWeek(dateIso);
+          const existingIdx = state.history.findIndex(function (row) {
+            return row.date === dateIso;
+          });
+
+          const entry = {
+            date: dateIso,
+            day: dayName,
+            ticketsSold: Math.max(0, Math.min(HALL_CAPACITY, ticketsSold)),
+            revenue: Math.max(0, revenue)
+          };
+
+          if (existingIdx >= 0) {
+            state.history[existingIdx] = {
+              date: dateIso,
+              day: dayName,
+              ticketsSold: Math.min(
+                HALL_CAPACITY,
+                state.history[existingIdx].ticketsSold + entry.ticketsSold
+              ),
+              revenue: state.history[existingIdx].revenue + entry.revenue
+            };
+          } else {
+            state.history.unshift(entry);
+          }
+
+          state.history.sort(function (a, b) {
+            return a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
+          });
+
+          if (db) {
+            db.ref('sales_history/' + dateIso).set(
+              state.history.find(function (r) {
+                return r.date === dateIso;
+              })
+            );
+          }
+        }
+
+        function resetShiftCounters(newDateIso) {
+          state.activeDate = newDateIso;
+          state.ticketsSold = 0;
+          state.reserved = 0;
+          state.revenue = 0;
+          state.seatStates = {};
+          state.processedBookingIds = {};
+          state.liveBookings = [];
+          customerSelectedSeats = [];
+          saveState(true);
+          syncSeatStatesToFirebase();
+          renderAll();
+        }
+
+        function checkAutoMidnightReset() {
+          const currentIso = formatISODate(new Date());
+          if (state.activeDate && state.activeDate !== currentIso) {
+            const archivedDate = state.activeDate;
+            archiveDateEntry(archivedDate, state.ticketsSold, state.revenue);
+            resetShiftCounters(currentIso);
+            showToast(
+              `12:00 AM Rollover: Archived ${archivedDate} and reset shift to Rs. 0.`,
+              'success'
+            );
+          }
+        }
+
+        function performManualReset() {
+          const shiftDate = state.activeDate || formatISODate(new Date());
+          archiveDateEntry(shiftDate, state.ticketsSold, state.revenue);
+          resetShiftCounters(formatISODate(new Date()));
+          showToast(`Archived ${shiftDate} shift and reset counters to Rs. 0.`, 'success');
+        }
+
+        // =========================================================================
+        // FIREBASE REAL-TIME LISTENERS
+        // =========================================================================
+        function handleIncomingBookingSnapshot(snapshot) {
+          const bookingId = snapshot.key;
+          const booking = snapshot.val();
+          if (!booking || !bookingId) return;
+
+          if (state.processedBookingIds[bookingId]) {
+            return;
+          }
+
+          if (booking.date && booking.date !== state.activeDate) {
+            return;
+          }
+
+          let seatList = [];
+          if (Array.isArray(booking.seats)) {
+            seatList = booking.seats;
+          } else if (typeof booking.seats === 'string' && booking.seats.trim()) {
+            seatList = booking.seats.split(',').map(function (s) {
+              return s.trim();
+            });
+          } else if (Array.isArray(booking.seatNumbers)) {
+            seatList = booking.seatNumbers;
+          }
+
+          const bookedSeatCount = Math.max(
+            1,
+            seatList.length || Number(booking.seatCount) || Number(booking.quantity) || 1
+          );
+          const availableNow = Math.max(0, HALL_CAPACITY - (state.ticketsSold + state.reserved));
+          const appliedCount = Math.min(bookedSeatCount, availableNow);
+
+          const bookingAmount =
+            Number(booking.totalAmount) ||
+            Number(booking.amount) ||
+            Number(booking.revenue) ||
+            appliedCount * (Number(booking.price) || getActiveTicketPrice());
+
+          state.processedBookingIds[bookingId] = true;
+          state.ticketsSold = Math.min(HALL_CAPACITY, state.ticketsSold + appliedCount);
+          state.revenue += Math.max(0, bookingAmount);
+          markSeatsBookedOnMonitor(seatList, appliedCount);
+
+          state.liveBookings.unshift({
+            id: bookingId,
+            bookingRef: booking.bookingRef || '#' + bookingId.slice(-6).toUpperCase(),
+            customerName: booking.customerName || 'Online Patron',
+            customerPhone: booking.customerPhone || '',
+            movieTitle: booking.movieTitle || (state.movies[0] ? state.movies[0].title : 'Hall 1 Screening'),
+            showtime: booking.showtime || '—',
+            seats: seatList,
+            seatCount: appliedCount,
+            totalAmount: Math.max(0, bookingAmount),
+            receiptImage: booking.receiptImage || '',
+            createdAt: booking.createdAt || Date.now()
+          });
+
+          saveState(true);
+          syncSeatStatesToFirebase();
+          renderAll();
+          playOrderBell();
+
+          const seatSummary = seatList.length > 0 ? seatList.join(', ') : `${appliedCount} seat(s)`;
+          showToast(
+            `🔔 New Booking: ${seatSummary} • +${formatNPR(bookingAmount)}`,
+            'success'
+          );
+        }
+
+        function attachFirebaseListeners() {
+          if (!db) return;
+
+          // 1. Real-time Ticket Booking Listener
+          db.ref('ticket_bookings').on('child_added', handleIncomingBookingSnapshot);
+
+          // 2. Real-time Seat Map Sync
+          db.ref('seat_states').on('value', function (snapshot) {
+            const val = snapshot.val();
+            if (val === false) {
+              state.seatStates = {};
+              state.ticketsSold = 0;
+              state.reserved = 0;
+              saveState(false);
+              renderRevenueAndCapacity();
+              renderCustomerSeatMap();
+              renderCustomerCheckoutSummary();
+            } else if (val && typeof val === 'object') {
+              state.seatStates = val;
+              reconcileSeatCounts();
+              saveState(false);
+              renderRevenueAndCapacity();
+              renderCustomerSeatMap();
+              renderCustomerCheckoutSummary();
+            }
+          });
+
+          // 3. Real-time Active Movies Catalog Sync
+          db.ref('active_movies_catalog').on('value', function (snapshot) {
+            const val = snapshot.val();
+            if (val === false) {
+              state.movies = [];
+              saveState(false);
+              renderActiveMovies();
+              renderCustomerShowcase();
+              renderRevenueAndCapacity();
+            } else if (Array.isArray(val)) {
+              state.movies = val;
+              saveState(false);
+              renderActiveMovies();
+              renderCustomerShowcase();
+              renderRevenueAndCapacity();
+            }
+          });
+
+          // 4. Real-time Single Active Movie Sync (db.ref('active_movies'))
+          db.ref('active_movies').on('value', function (snapshot) {
+            const val = snapshot.val();
+            if (!val) return;
+
+            if (val.title && val.times) {
+              const exists = state.movies.some(function (m) {
+                return m.title === val.title && m.times === val.times;
+              });
+              if (!exists) {
+                state.movies.unshift({
+                  id: 'fb_live_' + (val.updatedAt || Date.now()),
+                  title: val.title,
+                  poster: val.poster || '',
+                  times: val.times,
+                  price: Number(val.price) || DEFAULT_TICKET_PRICE,
+                  updatedAt: val.updatedAt || Date.now()
+                });
+                saveState(false);
+                renderActiveMovies();
+                renderCustomerShowcase();
+                renderRevenueAndCapacity();
+              }
+            }
+          });
+        }
+
+        // =========================================================================
+        // RENDERING
+        // =========================================================================
+        function updateClockAndDate() {
+          const now = new Date();
+          document.getElementById('liveDateText').textContent = formatDisplayDate(now);
+
+          const nextMidnight = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate() + 1,
+            0,
+            0,
+            0
+          );
+          const diffMs = Math.max(0, nextMidnight.getTime() - now.getTime());
+          const hrs = String(Math.floor(diffMs / 3600000)).padStart(2, '0');
+          const mins = String(Math.floor((diffMs % 3600000) / 60000)).padStart(2, '0');
+          const secs = String(Math.floor((diffMs % 60000) / 1000)).padStart(2, '0');
+          document.getElementById('midnightCountdown').textContent =
+            `Next reset in ${hrs}:${mins}:${secs}`;
+        }
+
+        function renderSeatMap() {
+          const grid = document.getElementById('seatMapGrid');
+          const rowsHtml = SEAT_ROWS.map(function (rowLetter) {
+            let seatsHtml = `<span class="seat-row-label">${rowLetter}</span>`;
+            for (let num = 1; num <= SEATS_PER_ROW; num++) {
+              if (num === 11) {
+                seatsHtml += `<span class="seat-aisle" aria-hidden="true"></span>`;
+              }
+              const seatId = `${rowLetter}${num}`;
+              const status = state.seatStates[seatId] || 'available';
+              const cls =
+                status === 'booked'
+                  ? 'seat-btn is-booked'
+                  : status === 'reserved'
+                  ? 'seat-btn is-reserved'
+                  : 'seat-btn';
+              const statusLabel =
+                status === 'booked' ? 'Booked' : status === 'reserved' ? 'Reserved' : 'Available';
+              seatsHtml += `<button type="button" class="${cls}" data-seat="${seatId}" title="Seat ${seatId} — ${statusLabel}" aria-label="Seat ${seatId}, ${statusLabel}">${num}</button>`;
+            }
+            seatsHtml += `<span class="seat-row-label">${rowLetter}</span>`;
+            return `<div class="seat-row" role="row">${seatsHtml}</div>`;
+          }).join('');
+          grid.innerHTML = rowsHtml;
+        }
+
+        function renderRevenueAndCapacity() {
+          const available = Math.max(0, HALL_CAPACITY - (state.ticketsSold + state.reserved));
+          const occupiedPct = Math.round(((state.ticketsSold + state.reserved) / HALL_CAPACITY) * 100);
+          const soldPct = (state.ticketsSold / HALL_CAPACITY) * 100;
+          const reservedPct = (state.reserved / HALL_CAPACITY) * 100;
+
+          document.getElementById('todayRevenueDisplay').textContent = formatNPR(state.revenue);
+          document.getElementById('statTotalSeats').textContent = String(HALL_CAPACITY);
+          document.getElementById('statTicketsSold').textContent = String(state.ticketsSold);
+          document.getElementById('statReserved').textContent = String(state.reserved);
+          document.getElementById('statAvailable').textContent = String(available);
+
+          document.getElementById('occupancyPctLabel').textContent = `${occupiedPct}% Occupied`;
+          document.getElementById('legendAvailable').textContent = String(available);
+          document.getElementById('legendReserved').textContent = String(state.reserved);
+          document.getElementById('legendBooked').textContent = String(state.ticketsSold);
+
+          document.getElementById('barSold').style.width = `${soldPct.toFixed(2)}%`;
+          document.getElementById('barReserved').style.width = `${reservedPct.toFixed(2)}%`;
+          document.getElementById('activeRateInfo').textContent =
+            `Active ticket rate: ${formatNPR(getActiveTicketPrice())}`;
+
+          renderSeatMap();
+        }
+
+        function renderActiveMovies() {
+          const container = document.getElementById('activeMoviesList');
+          const countEl = document.getElementById('activeMoviesCount');
+          countEl.textContent = `${state.movies.length} active`;
+
+          if (state.movies.length === 0) {
+            container.innerHTML = `
+              <div class="empty-movies">
+                No movies are currently active on the booking site. Use the form on the left to publish a movie.
+              </div>
+            `;
+            return;
+          }
+
+          container.innerHTML = state.movies
+            .map(function (movie) {
+              const safeTitle = escapeHTML(movie.title);
+              const safeTimes = escapeHTML(movie.times || movie.showtimes || '');
+              const safePoster = movie.poster || '';
+              return `
+                <article class="movie-item" data-movie-id="${escapeHTML(movie.id)}">
+                  <img
+                    class="movie-poster"
+                    src="${safePoster}"
+                    alt="${safeTitle} poster"
+                    referrerpolicy="no-referrer"
+                  />
+                  <div class="movie-info">
+                    <div>
+                      <div class="movie-top">
+                        <h3 class="movie-title">${safeTitle}</h3>
+                        <span class="screening-badge">NOW SCREENING</span>
+                      </div>
+                      <div class="movie-showtimes">Showtimes: ${safeTimes}</div>
+                    </div>
+                    <div class="movie-bottom">
+                      <span class="movie-price">${formatNPR(movie.price)}</span>
+                      <button
+                        type="button"
+                        class="btn btn-ghost-danger remove-movie-btn"
+                        data-id="${escapeHTML(movie.id)}"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              `;
+            })
+            .join('');
+        }
+
+        function renderSalesHistory() {
+          const query = (document.getElementById('historySearchInput').value || '').trim().toLowerCase();
+          const tbody = document.getElementById('salesHistoryBody');
+          const tfoot = document.getElementById('salesHistoryFoot');
+
+          const filtered = state.history.filter(function (row) {
+            if (!query) return true;
+            return (
+              row.date.toLowerCase().includes(query) ||
+              row.day.toLowerCase().includes(query)
+            );
+          });
+
+          if (filtered.length === 0) {
+            const msg =
+              state.history.length === 0
+                ? 'No archived shift records yet. Records appear automatically at 12:00 AM or when you click Reset Day.'
+                : 'No archived shift records match your filter.';
+            tbody.innerHTML = `
+              <tr>
+                <td colspan="4" style="text-align:center; color: var(--text-muted); padding: 24px;">
+                  ${msg}
+                </td>
+              </tr>
+            `;
+            tfoot.innerHTML = '';
+            return;
+          }
+
+          let totalTickets = 0;
+          let totalRevenue = 0;
+
+          tbody.innerHTML = filtered
+            .map(function (row) {
+              totalTickets += row.ticketsSold;
+              totalRevenue += row.revenue;
+              return `
+                <tr>
+                  <td class="mono-date">${escapeHTML(row.date)}</td>
+                  <td>${escapeHTML(row.day)}</td>
+                  <td class="num">${row.ticketsSold} <span class="sold-ratio-muted">/ ${HALL_CAPACITY}</span></td>
+                  <td class="num">${formatNPR(row.revenue)}</td>
+                </tr>
+              `;
+            })
+            .join('');
+
+          tfoot.innerHTML = `
+            <tr>
+              <td colspan="2">Total (${filtered.length} ${filtered.length === 1 ? 'day' : 'days'})</td>
+              <td class="num">${totalTickets.toLocaleString('en-IN')}</td>
+              <td class="num">${formatNPR(totalRevenue)}</td>
+            </tr>
+          `;
+        }
+
+        function renderLiveBookings() {
+          const tbody = document.getElementById('liveBookingsBody');
+          const countEl = document.getElementById('liveBookingsCount');
+          countEl.textContent = `${state.liveBookings.length} booking${state.liveBookings.length === 1 ? '' : 's'} today`;
+
+          if (state.liveBookings.length === 0) {
+            tbody.innerHTML = `
+              <tr>
+                <td colspan="7" style="text-align:center; color: var(--text-muted); padding: 24px;">
+                  No live ticket bookings yet for today's shift. Customer bookings and uploaded slips appear here in real time.
+                </td>
+              </tr>
+            `;
+            return;
+          }
+
+          tbody.innerHTML = state.liveBookings
+            .map(function (item) {
+              const seatsStr =
+                Array.isArray(item.seats) && item.seats.length > 0
+                  ? item.seats.join(', ')
+                  : `${item.seatCount} seat(s)`;
+              const patronPhone = item.customerPhone ? ` · ${escapeHTML(item.customerPhone)}` : '';
+              const slipCell = item.receiptImage
+                ? `<button type="button" class="slip-thumb-btn view-slip-btn" data-id="${escapeHTML(item.id)}"><img src="${item.receiptImage}" alt="Uploaded slip" /><span>View Slip</span></button>`
+                : `<span style="color: var(--text-muted); font-size: 0.8rem;">No slip attached</span>`;
+
+              return `
+                <tr>
+                  <td class="mono-date">${escapeHTML(item.bookingRef || item.id)}</td>
+                  <td>${escapeHTML(item.customerName)}${patronPhone}</td>
+                  <td>${escapeHTML(item.movieTitle)} <span style="color: var(--text-muted)">(${escapeHTML(item.showtime)})</span></td>
+                  <td class="seat-chip-list">${escapeHTML(seatsStr)}</td>
+                  <td>${slipCell}</td>
+                  <td class="num">${formatNPR(item.totalAmount)}</td>
+                  <td class="num">
+                    <button type="button" class="btn btn-ghost-danger void-booking-btn" data-id="${escapeHTML(item.id)}">
+                      Void
+                    </button>
+                  </td>
+                </tr>
+              `;
+            })
+            .join('');
+        }
+
+        function getSelectedCustomerMovie() {
+          if (state.movies.length === 0) return null;
+          const found = state.movies.find(function (m) {
+            return m.id === selectedCustomerMovieId;
+          });
+          return found || state.movies[0];
+        }
+
+        function renderCustomerShowcase() {
+          const grid = document.getElementById('customerMoviesGrid');
+          const countEl = document.getElementById('customerMoviesCount');
+          const availBadge = document.getElementById('customerAvailableBadge');
+          const available = Math.max(0, HALL_CAPACITY - (state.ticketsSold + state.reserved));
+
+          availBadge.textContent = `${available} seats open`;
+          countEl.textContent = `${state.movies.length} show${state.movies.length === 1 ? '' : 's'} available`;
+
+          if (state.movies.length === 0) {
+            selectedCustomerMovieId = '';
+            selectedCustomerShowtime = '';
+            grid.innerHTML = `
+              <div class="empty-movies" style="grid-column: 1 / -1;">
+                No movies are currently screening on the booking site. Publish a movie from the Admin Console to make it visible to users immediately.
+              </div>
+            `;
+            renderCustomerCheckoutSummary();
+            return;
+          }
+
+          const currentMovie = getSelectedCustomerMovie();
+          if (currentMovie) {
+            selectedCustomerMovieId = currentMovie.id;
+            const timesArr = String(currentMovie.times || '')
+              .split(',')
+              .map(function (t) {
+                return t.trim();
+              })
+              .filter(Boolean);
+            if (!timesArr.includes(selectedCustomerShowtime)) {
+              selectedCustomerShowtime = timesArr[0] || 'Standard Show';
+            }
+          }
+
+          grid.innerHTML = state.movies
+            .map(function (movie) {
+              const isSelected = currentMovie && movie.id === currentMovie.id;
+              const timesArr = String(movie.times || '')
+                .split(',')
+                .map(function (t) {
+                  return t.trim();
+                })
+                .filter(Boolean);
+
+              const chipsHtml = timesArr
+                .map(function (timeStr) {
+                  const chipActive = isSelected && selectedCustomerShowtime === timeStr;
+                  return `<button type="button" class="showtime-chip ${chipActive ? 'active' : ''}" data-movie-id="${escapeHTML(movie.id)}" data-time="${escapeHTML(timeStr)}">${escapeHTML(timeStr)}</button>`;
+                })
+                .join('');
+
+              return `
+                <article class="customer-movie-card ${isSelected ? 'selected' : ''}" data-movie-id="${escapeHTML(movie.id)}">
+                  <img
+                    class="customer-movie-poster"
+                    src="${movie.poster || ''}"
+                    alt="${escapeHTML(movie.title)} poster"
+                    referrerpolicy="no-referrer"
+                  />
+                  <div class="customer-movie-body">
+                    <div>
+                      <div class="movie-top" style="margin-bottom: 6px;">
+                        <h3 class="movie-title">${escapeHTML(movie.title)}</h3>
+                        <span class="screening-badge">NOW SCREENING</span>
+                      </div>
+                      <div class="movie-price" style="margin-bottom: 10px;">${formatNPR(movie.price)} / seat</div>
+                      <div class="showtime-chips">${chipsHtml}</div>
+                    </div>
+                  </div>
+                </article>
+              `;
+            })
+            .join('');
+
+          renderCustomerCheckoutSummary();
+        }
+
+        function renderCustomerSeatMap() {
+          const grid = document.getElementById('customerSeatMapGrid');
+          if (!grid) return;
+
+          // Drop any selected seats that became booked or reserved in real time
+          customerSelectedSeats = customerSelectedSeats.filter(function (id) {
+            return !state.seatStates[id];
+          });
+
+          const rowsHtml = SEAT_ROWS.map(function (rowLetter) {
+            let seatsHtml = `<span class="seat-row-label">${rowLetter}</span>`;
+            for (let num = 1; num <= SEATS_PER_ROW; num++) {
+              if (num === 11) {
+                seatsHtml += `<span class="seat-aisle" aria-hidden="true"></span>`;
+              }
+              const seatId = `${rowLetter}${num}`;
+              const status = state.seatStates[seatId] || 'available';
+              const isSelected = customerSelectedSeats.includes(seatId);
+              const isUnavailable = status === 'booked' || status === 'reserved';
+
+              const cls =
+                status === 'booked'
+                  ? 'seat-btn is-booked'
+                  : status === 'reserved'
+                  ? 'seat-btn is-reserved'
+                  : isSelected
+                  ? 'seat-btn is-selected'
+                  : 'seat-btn';
+
+              seatsHtml += `<button type="button" class="${cls}" data-seat="${seatId}" ${isUnavailable ? 'disabled' : ''} title="Seat ${seatId}" aria-label="Seat ${seatId}">${num}</button>`;
+            }
+            seatsHtml += `<span class="seat-row-label">${rowLetter}</span>`;
+            return `<div class="seat-row" role="row">${seatsHtml}</div>`;
+          }).join('');
+
+          grid.innerHTML = rowsHtml;
+          document.getElementById('customerSelectedCount').textContent = String(
+            customerSelectedSeats.length
+          );
+        }
+
+        function renderCustomerCheckoutSummary() {
+          const movie = getSelectedCustomerMovie();
+          const price = movie ? Number(movie.price) || DEFAULT_TICKET_PRICE : getActiveTicketPrice();
+          const total = customerSelectedSeats.length * price;
+
+          document.getElementById('summaryMovieTitle').textContent = movie
+            ? movie.title
+            : 'No movie published';
+          document.getElementById('summaryShowtime').textContent = movie
+            ? selectedCustomerShowtime || '—'
+            : '—';
+          document.getElementById('summarySeats').textContent =
+            customerSelectedSeats.length > 0 ? customerSelectedSeats.join(', ') : 'None selected';
+          document.getElementById('summaryTotalAmount').textContent = formatNPR(total);
+        }
+
+        function renderAll() {
+          renderRevenueAndCapacity();
+          renderActiveMovies();
+          renderSalesHistory();
+          renderLiveBookings();
+          renderCustomerShowcase();
+          renderCustomerSeatMap();
+        }
+
+        // =========================================================================
+        // GALLERY IMAGE COMPRESSION (HTML5 FileReader + Off-Screen Canvas)
+        // =========================================================================
+        function compressImageFile(file) {
+          const statusEl = document.getElementById('uploaderStatusText');
+          statusEl.textContent = 'Resizing & compressing poster via Canvas...';
+
+          const reader = new FileReader();
+          reader.onload = function (event) {
+            const img = new Image();
+            img.onload = function () {
+              const MAX_WIDTH = 420;
+              const MAX_HEIGHT = 580;
+
+              let targetW = img.width;
+              let targetH = img.height;
+
+              if (targetW > MAX_WIDTH || targetH > MAX_HEIGHT) {
+                const ratio = Math.min(MAX_WIDTH / targetW, MAX_HEIGHT / targetH);
+                targetW = Math.max(1, Math.round(targetW * ratio));
+                targetH = Math.max(1, Math.round(targetH * ratio));
+              }
+
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d');
+
+              let scale = 1;
+              let quality = 0.78;
+              let compressedDataUrl = '';
+              let estimatedBytes = 0;
+
+              for (let attempt = 0; attempt < 6; attempt++) {
+                canvas.width = Math.max(1, Math.round(targetW * scale));
+                canvas.height = Math.max(1, Math.round(targetH * scale));
+                ctx.fillStyle = '#08080c';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+                const base64Part = compressedDataUrl.split(',')[1] || '';
+                estimatedBytes = Math.round((base64Part.length * 3) / 4);
+
+                if (estimatedBytes <= 45 * 1024) {
+                  break;
+                }
+                if (quality > 0.45) {
+                  quality -= 0.12;
+                } else {
+                  scale *= 0.82;
+                }
+              }
+
+              pendingPosterDataUrl = compressedDataUrl;
+              showPosterPreview(compressedDataUrl, estimatedBytes, canvas.width, canvas.height);
+              clearFormFeedback();
+            };
+            img.onerror = function () {
+              statusEl.textContent = 'Auto-resized & compressed via Canvas (~40 KB JPEG Base64)';
+              showFormFeedback('Unable to decode selected image. Please choose another file.');
+            };
+            img.src = event.target.result;
+          };
+          reader.onerror = function () {
+            statusEl.textContent = 'Auto-resized & compressed via Canvas (~40 KB JPEG Base64)';
+            showFormFeedback('Failed to read photo from phone gallery.');
+          };
+          reader.readAsDataURL(file);
+        }
+
+        function showPosterPreview(dataUrl, bytes, width, height) {
+          const trigger = document.getElementById('uploaderTrigger');
+          const previewRow = document.getElementById('posterPreviewRow');
+          const previewImg = document.getElementById('posterPreviewImg');
+          const sizeInfo = document.getElementById('posterSizeInfo');
+
+          previewImg.src = dataUrl;
+          const kb = Math.max(1, Math.round(bytes / 1024));
+          sizeInfo.textContent = `${width}×${height}px • ${kb} KB JPEG`;
+          trigger.style.display = 'none';
+          previewRow.classList.add('active');
+        }
+
+        function clearPosterPreview() {
+          pendingPosterDataUrl = '';
+          const fileInput = document.getElementById('posterFileInput');
+          const trigger = document.getElementById('uploaderTrigger');
+          const previewRow = document.getElementById('posterPreviewRow');
+          const previewImg = document.getElementById('posterPreviewImg');
+          const statusEl = document.getElementById('uploaderStatusText');
+
+          fileInput.value = '';
+          previewImg.src = '';
+          previewRow.classList.remove('active');
+          trigger.style.display = 'flex';
+          statusEl.textContent = 'Auto-resized & compressed via Canvas (~40 KB JPEG Base64)';
+        }
+
+        function showFormFeedback(message) {
+          const el = document.getElementById('formFeedback');
+          el.textContent = message;
+          el.classList.add('error');
+        }
+
+        function clearFormFeedback() {
+          const el = document.getElementById('formFeedback');
+          el.textContent = '';
+          el.classList.remove('error');
+        }
+
+        // =========================================================================
+        // TOAST & MODAL CONTROLS
+        // =========================================================================
+        function showToast(message, variant) {
+          const stack = document.getElementById('toastStack');
+          const toast = document.createElement('div');
+          toast.className = `toast ${variant ? 'toast--' + variant : ''}`;
+          toast.textContent = message;
+          stack.appendChild(toast);
+
+          requestAnimationFrame(function () {
+            toast.classList.add('visible');
+          });
+
+          setTimeout(function () {
+            toast.classList.remove('visible');
+            setTimeout(function () {
+              if (toast.parentNode) toast.parentNode.removeChild(toast);
+            }, 220);
+          }, 3400);
+        }
+
+        function openResetModal() {
+          document.getElementById('modalShiftDate').textContent = state.activeDate;
+          document.getElementById('modalShiftTickets').textContent = `${state.ticketsSold} / ${HALL_CAPACITY}`;
+          document.getElementById('modalShiftRevenue').textContent = formatNPR(state.revenue);
+          document.getElementById('resetModalBackdrop').classList.add('open');
+          document.getElementById('confirmResetBtn').focus();
+        }
+
+        function closeResetModal() {
+          document.getElementById('resetModalBackdrop').classList.remove('open');
+        }
+
+        function exportHistoryCsv() {
+          if (state.history.length === 0) {
+            showToast('No archived shift records to export yet.', 'danger');
+            return;
+          }
+          const header = ['Date (YYYY-MM-DD)', 'Day of Week', 'Tickets Sold (/190)', 'Total Revenue (Rs.)'];
+          const rows = state.history.map(function (r) {
+            return [r.date, r.day, String(r.ticketsSold), String(r.revenue)];
+          });
+          const csvContent = [header, ...rows]
+            .map(function (cols) {
+              return cols
+                .map(function (c) {
+                  return `"${String(c).replace(/"/g, '""')}"`;
+                })
+                .join(',');
+            })
+            .join('\n');
+
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.setAttribute('href', url);
+          link.setAttribute('download', `event-cinemas-history-${formatISODate(new Date())}.csv`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          showToast('Exported sales history CSV.', 'success');
+        }
+
+        function setActiveView(viewName) {
+          activeView = viewName === 'booking' ? 'booking' : 'admin';
+          const adminEl = document.getElementById('adminConsoleView');
+          const bookingEl = document.getElementById('customerBookingView');
+          const adminBtn = document.getElementById('switchAdminBtn');
+          const bookingBtn = document.getElementById('switchBookingBtn');
+          const headerTitle = document.getElementById('headerTitleText');
+          const bellBtn = document.getElementById('bellTestBtn');
+
+          if (activeView === 'booking') {
+            adminEl.hidden = true;
+            bookingEl.hidden = false;
+            adminBtn.classList.remove('active');
+            bookingBtn.classList.add('active');
+            adminBtn.setAttribute('aria-selected', 'false');
+            bookingBtn.setAttribute('aria-selected', 'true');
+            headerTitle.textContent = 'Event Cinemas — Ticket Booking';
+            bellBtn.style.display = 'none';
+          } else {
+            adminEl.hidden = false;
+            bookingEl.hidden = true;
+            adminBtn.classList.add('active');
+            bookingBtn.classList.remove('active');
+            adminBtn.setAttribute('aria-selected', 'true');
+            bookingBtn.setAttribute('aria-selected', 'false');
+            headerTitle.textContent = 'Event Cinemas — Admin Console';
+            bellBtn.style.display = 'inline-flex';
+          }
+        }
+
+        function compressCustomerSlipFile(file) {
+          const statusEl = document.getElementById('customerSlipStatusText');
+          statusEl.textContent = 'Compressing slip via Canvas...';
+
+          const reader = new FileReader();
+          reader.onload = function (event) {
+            const img = new Image();
+            img.onload = function () {
+              const MAX_WIDTH = 420;
+              const MAX_HEIGHT = 580;
+              let targetW = img.width;
+              let targetH = img.height;
+
+              if (targetW > MAX_WIDTH || targetH > MAX_HEIGHT) {
+                const ratio = Math.min(MAX_WIDTH / targetW, MAX_HEIGHT / targetH);
+                targetW = Math.max(1, Math.round(targetW * ratio));
+                targetH = Math.max(1, Math.round(targetH * ratio));
+              }
+
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d');
+              let scale = 1;
+              let quality = 0.76;
+              let compressedDataUrl = '';
+              let estimatedBytes = 0;
+
+              for (let attempt = 0; attempt < 6; attempt++) {
+                canvas.width = Math.max(1, Math.round(targetW * scale));
+                canvas.height = Math.max(1, Math.round(targetH * scale));
+                ctx.fillStyle = '#08080c';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+                const base64Part = compressedDataUrl.split(',')[1] || '';
+                estimatedBytes = Math.round((base64Part.length * 3) / 4);
+
+                if (estimatedBytes <= 40 * 1024) break;
+                if (quality > 0.45) quality -= 0.12;
+                else scale *= 0.82;
+              }
+
+              pendingCustomerSlipDataUrl = compressedDataUrl;
+              document.getElementById('customerSlipPreviewImg').src = compressedDataUrl;
+              document.getElementById('customerSlipSizeInfo').textContent =
+                `${canvas.width}×${canvas.height}px • ${Math.max(1, Math.round(estimatedBytes / 1024))} KB JPEG`;
+              document.getElementById('customerSlipTrigger').style.display = 'none';
+              document.getElementById('customerSlipPreviewRow').classList.add('active');
+              clearCustomerFormFeedback();
+            };
+            img.onerror = function () {
+              statusEl.textContent = 'Auto-compressed via Canvas (~35 KB JPEG)';
+              showCustomerFormFeedback('Could not read the selected slip image.');
+            };
+            img.src = event.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+
+        function clearCustomerSlipPreview() {
+          pendingCustomerSlipDataUrl = '';
+          document.getElementById('customerSlipFileInput').value = '';
+          document.getElementById('customerSlipPreviewImg').src = '';
+          document.getElementById('customerSlipPreviewRow').classList.remove('active');
+          document.getElementById('customerSlipTrigger').style.display = 'flex';
+          document.getElementById('customerSlipStatusText').textContent =
+            'Auto-compressed via Canvas (~35 KB JPEG)';
+        }
+
+        function showCustomerFormFeedback(msg) {
+          const el = document.getElementById('customerFormFeedback');
+          el.textContent = msg;
+          el.classList.add('error');
+        }
+
+        function clearCustomerFormFeedback() {
+          const el = document.getElementById('customerFormFeedback');
+          el.textContent = '';
+          el.classList.remove('error');
+        }
+
+        function showConfirmedDigitalTicket(booking) {
+          document.getElementById('eticketRef').textContent = booking.bookingRef;
+          document.getElementById('eticketMovie').textContent = booking.movieTitle;
+          document.getElementById('eticketShowtime').textContent = booking.showtime;
+          document.getElementById('eticketSeats').textContent = booking.seats.join(', ');
+          document.getElementById('eticketAmount').textContent = formatNPR(booking.totalAmount);
+          document.getElementById('eticketPatron').textContent =
+            `${booking.customerName} (${booking.customerPhone})`;
+
+          const slipWrap = document.getElementById('eticketSlipWrap');
+          const slipImg = document.getElementById('eticketSlipImg');
+          if (booking.receiptImage) {
+            slipImg.src = booking.receiptImage;
+            slipWrap.hidden = false;
+          } else {
+            slipImg.src = '';
+            slipWrap.hidden = true;
+          }
+
+          const sec = document.getElementById('confirmedTicketSection');
+          sec.hidden = false;
+          sec.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // =========================================================================
+        // EVENT BINDINGS
+        // =========================================================================
+        function bindEvents() {
+          // View Switcher
+          document.getElementById('switchAdminBtn').addEventListener('click', function () {
+            setActiveView('admin');
+          });
+          document.getElementById('switchBookingBtn').addEventListener('click', function () {
+            setActiveView('booking');
+          });
+
+          document.getElementById('copyBookingLinkBtn').addEventListener('click', function () {
+            const url = new URL(window.location.href);
+            url.searchParams.set('view', 'booking');
+            const finalUrl = url.toString();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard
+                .writeText(finalUrl)
+                .then(function () {
+                  showToast('Copied Customer Booking Site URL to clipboard.', 'success');
+                })
+                .catch(function () {
+                  showToast('Customer Booking URL: ?view=booking', 'success');
+                });
+            } else {
+              showToast('Customer Booking URL: ?view=booking', 'success');
+            }
+          });
+
+          // Test Bell Button
+          document.getElementById('bellTestBtn').addEventListener('click', function () {
+            ensureAudioContext();
+            playOrderBell();
+            showToast('Reception booking chime played.', 'success');
+          });
+
+          // Seat Click Mode Tabs
+          document.querySelectorAll('.mode-tab').forEach(function (tab) {
+            tab.addEventListener('click', function () {
+              seatClickMode = tab.getAttribute('data-mode') || 'booked';
+              document.querySelectorAll('.mode-tab').forEach(function (t) {
+                t.classList.remove('active');
+              });
+              tab.classList.add('active');
+            });
+          });
+
+          // 190-Seat Monitor Interactive Click (Admin)
+          document.getElementById('seatMapGrid').addEventListener('click', function (e) {
+            const seatBtn = e.target.closest('.seat-btn');
+            if (!seatBtn) return;
+
+            const seatId = seatBtn.getAttribute('data-seat');
+            const current = state.seatStates[seatId] || 'available';
+            const rate = getActiveTicketPrice();
+
+            if (seatClickMode === 'booked') {
+              if (current === 'booked') return;
+              if (current === 'reserved') {
+                state.reserved = Math.max(0, state.reserved - 1);
+              }
+              if (state.ticketsSold + state.reserved >= HALL_CAPACITY) {
+                showToast('Hall 1 is at 190-seat capacity.', 'danger');
+                return;
+              }
+              state.seatStates[seatId] = 'booked';
+              state.ticketsSold += 1;
+              state.revenue += rate;
+              playOrderBell();
+              showToast(`Seat ${seatId} booked (+${formatNPR(rate)}).`, 'success');
+            } else if (seatClickMode === 'reserved') {
+              if (current === 'reserved') return;
+              if (current === 'booked') {
+                state.ticketsSold = Math.max(0, state.ticketsSold - 1);
+                state.revenue = Math.max(0, state.revenue - rate);
+              }
+              if (state.ticketsSold + state.reserved >= HALL_CAPACITY) {
+                showToast('Hall 1 is at 190-seat capacity.', 'danger');
+                return;
+              }
+              state.seatStates[seatId] = 'reserved';
+              state.reserved += 1;
+            } else if (seatClickMode === 'available') {
+              if (current === 'available') return;
+              if (current === 'booked') {
+                state.ticketsSold = Math.max(0, state.ticketsSold - 1);
+                state.revenue = Math.max(0, state.revenue - rate);
+              } else if (current === 'reserved') {
+                state.reserved = Math.max(0, state.reserved - 1);
+              }
+              delete state.seatStates[seatId];
+            }
+
+            saveState(true);
+            syncSeatStatesToFirebase();
+            renderRevenueAndCapacity();
+            renderCustomerSeatMap();
+            renderCustomerShowcase();
+          });
+
+          // Gallery Poster Uploader (Admin)
+          document.getElementById('posterFileInput').addEventListener('change', function (e) {
+            const file = e.target.files && e.target.files[0];
+            if (file) {
+              if (!file.type.startsWith('image/')) {
+                showFormFeedback('Please select a valid image file (JPG, PNG, or WebP).');
+                return;
+              }
+              compressImageFile(file);
+            }
+          });
+
+          const dropzone = document.getElementById('uploaderDropzone');
+          dropzone.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            dropzone.classList.add('drag-active');
+          });
+          dropzone.addEventListener('dragleave', function () {
+            dropzone.classList.remove('drag-active');
+          });
+          dropzone.addEventListener('drop', function (e) {
+            e.preventDefault();
+            dropzone.classList.remove('drag-active');
+            const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+              compressImageFile(file);
+            } else if (file) {
+              showFormFeedback('Please drop a valid image file (JPG, PNG, or WebP).');
+            }
+          });
+
+          document.getElementById('removePosterBtn').addEventListener('click', clearPosterPreview);
+
+          // Publish Movie to Booking Site (Admin)
+          document.getElementById('moviePostForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            clearFormFeedback();
+
+            const title = (document.getElementById('movieTitleInput').value || '').trim();
+            const times = (document.getElementById('showtimesInput').value || '').trim();
+            const price = Math.round(Number(document.getElementById('ticketPriceInput').value));
+
+            if (!title) {
+              showFormFeedback('Please enter a movie title.');
+              document.getElementById('movieTitleInput').focus();
+              return;
+            }
+            if (!pendingPosterDataUrl) {
+              showFormFeedback('Please choose a poster from your phone gallery.');
+              return;
+            }
+            if (!times) {
+              showFormFeedback('Please enter showtimes.');
+              document.getElementById('showtimesInput').focus();
+              return;
+            }
+            if (!price || price < 50) {
+              showFormFeedback('Please enter a valid ticket price in NPR (minimum Rs. 50).');
+              document.getElementById('ticketPriceInput').focus();
+              return;
+            }
+
+            const updatedAt = Date.now();
+            const newMovie = {
+              id: 'mov_' + updatedAt + '_' + Math.random().toString(36).slice(2, 6),
+              title: title,
+              poster: pendingPosterDataUrl,
+              times: times,
+              price: price,
+              updatedAt: updatedAt
+            };
+
+            state.movies.unshift(newMovie);
+            saveState(true);
+            syncMoviesToFirebase(newMovie);
+            renderAll();
+
+            document.getElementById('movieTitleInput').value = '';
+            document.getElementById('showtimesInput').value = '11:30 AM, 02:45 PM';
+            document.getElementById('ticketPriceInput').value = String(DEFAULT_TICKET_PRICE);
+            clearPosterPreview();
+
+            showToast(`Published "${newMovie.title}" live to Customer Booking Site.`, 'success');
+          });
+
+          // Remove Movie from Active List (Admin)
+          document.getElementById('activeMoviesList').addEventListener('click', function (e) {
+            const btn = e.target.closest('.remove-movie-btn');
+            if (!btn) return;
+            const id = btn.getAttribute('data-id');
+            const target = state.movies.find(function (m) {
+              return m.id === id;
+            });
+            state.movies = state.movies.filter(function (m) {
+              return m.id !== id;
+            });
+            saveState(true);
+            syncMoviesToFirebase(state.movies[0] || null);
+            renderAll();
+
+            if (target) {
+              showToast(`Removed "${target.title}" from active listings.`, 'danger');
+            }
+          });
+
+          // Admin Live Bookings Feed Actions (View Slip / Void Booking)
+          document.getElementById('liveBookingsBody').addEventListener('click', function (e) {
+            const slipBtn = e.target.closest('.view-slip-btn');
+            if (slipBtn) {
+              const id = slipBtn.getAttribute('data-id');
+              const found = state.liveBookings.find(function (b) {
+                return b.id === id;
+              });
+              if (found && found.receiptImage) {
+                document.getElementById('slipModalImg').src = found.receiptImage;
+                document.getElementById('slipModalBackdrop').classList.add('open');
+              }
+              return;
+            }
+
+            const voidBtn = e.target.closest('.void-booking-btn');
+            if (voidBtn) {
+              const id = voidBtn.getAttribute('data-id');
+              const target = state.liveBookings.find(function (b) {
+                return b.id === id;
+              });
+              if (!target) return;
+
+              if (Array.isArray(target.seats)) {
+                target.seats.forEach(function (seatId) {
+                  if (state.seatStates[seatId] === 'booked') {
+                    delete state.seatStates[seatId];
+                  }
+                });
+              }
+              state.ticketsSold = Math.max(0, state.ticketsSold - (target.seatCount || 0));
+              state.revenue = Math.max(0, state.revenue - (target.totalAmount || 0));
+              state.liveBookings = state.liveBookings.filter(function (b) {
+                return b.id !== id;
+              });
+
+              if (db) {
+                db.ref('ticket_bookings/' + id).remove().catch(function () {});
+              }
+
+              saveState(true);
+              syncSeatStatesToFirebase();
+              renderAll();
+              showToast(`Voided booking ${target.bookingRef} and released seats.`, 'danger');
+            }
+          });
+
+          // Customer View: Movie Card & Showtime Chip Selection
+          document.getElementById('customerMoviesGrid').addEventListener('click', function (e) {
+            const chip = e.target.closest('.showtime-chip');
+            if (chip) {
+              selectedCustomerMovieId = chip.getAttribute('data-movie-id');
+              selectedCustomerShowtime = chip.getAttribute('data-time');
+              renderCustomerShowcase();
+              return;
+            }
+            const card = e.target.closest('.customer-movie-card');
+            if (card) {
+              selectedCustomerMovieId = card.getAttribute('data-movie-id');
+              const movie = getSelectedCustomerMovie();
+              if (movie) {
+                const firstTime = String(movie.times || '').split(',')[0].trim();
+                selectedCustomerShowtime = firstTime || 'Standard Show';
+              }
+              renderCustomerShowcase();
+            }
+          });
+
+          // Customer View: 190-Seat Selection
+          document.getElementById('customerSeatMapGrid').addEventListener('click', function (e) {
+            const seatBtn = e.target.closest('.seat-btn');
+            if (!seatBtn || seatBtn.disabled) return;
+
+            const seatId = seatBtn.getAttribute('data-seat');
+            if (state.seatStates[seatId]) return;
+
+            if (customerSelectedSeats.includes(seatId)) {
+              customerSelectedSeats = customerSelectedSeats.filter(function (s) {
+                return s !== seatId;
+              });
+            } else {
+              customerSelectedSeats.push(seatId);
+              customerSelectedSeats.sort();
+            }
+            renderCustomerSeatMap();
+            renderCustomerCheckoutSummary();
+          });
+
+          // Customer View: Slip Uploader
+          document.getElementById('customerSlipFileInput').addEventListener('change', function (e) {
+            const file = e.target.files && e.target.files[0];
+            if (file) {
+              if (!file.type.startsWith('image/')) {
+                showCustomerFormFeedback('Please select a valid image file for the slip.');
+                return;
+              }
+              compressCustomerSlipFile(file);
+            }
+          });
+          document
+            .getElementById('removeCustomerSlipBtn')
+            .addEventListener('click', clearCustomerSlipPreview);
+
+          // Customer View: Submit Real-Time Ticket Booking & Upload
+          document.getElementById('customerBookingForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            clearCustomerFormFeedback();
+
+            const movie = getSelectedCustomerMovie();
+            const name = (document.getElementById('customerNameInput').value || '').trim();
+            const phone = (document.getElementById('customerPhoneInput').value || '').trim();
+
+            if (!movie) {
+              showCustomerFormFeedback('No active movie screening is available right now.');
+              return;
+            }
+            if (customerSelectedSeats.length === 0) {
+              showCustomerFormFeedback('Please select at least one available seat on the Hall 1 map.');
+              return;
+            }
+            if (!name) {
+              showCustomerFormFeedback('Please enter your full name.');
+              document.getElementById('customerNameInput').focus();
+              return;
+            }
+            if (!phone || phone.length < 7) {
+              showCustomerFormFeedback('Please enter a valid mobile number.');
+              document.getElementById('customerPhoneInput').focus();
+              return;
+            }
+
+            // Ensure none of the chosen seats were just claimed
+            const conflict = customerSelectedSeats.some(function (id) {
+              return Boolean(state.seatStates[id]);
+            });
+            if (conflict) {
+              showCustomerFormFeedback(
+                'One or more selected seats were just booked. Please pick open seats.'
+              );
+              renderCustomerSeatMap();
+              renderCustomerCheckoutSummary();
+              return;
+            }
+
+            const seatsToBook = customerSelectedSeats.slice();
+            const price = Number(movie.price) || DEFAULT_TICKET_PRICE;
+            const totalAmount = seatsToBook.length * price;
+            const bookingRef = '#EC-' + String(Date.now()).slice(-6);
+            const createdAt = Date.now();
+            const bookingId = 'bk_' + createdAt + '_' + Math.random().toString(36).slice(2, 6);
+
+            const bookingPayload = {
+              bookingRef: bookingRef,
+              customerName: name,
+              customerPhone: phone,
+              movieId: movie.id,
+              movieTitle: movie.title,
+              showtime: selectedCustomerShowtime || 'Standard Show',
+              seats: seatsToBook,
+              seatCount: seatsToBook.length,
+              price: price,
+              totalAmount: totalAmount,
+              receiptImage: pendingCustomerSlipDataUrl || '',
+              date: state.activeDate,
+              createdAt: createdAt
+            };
+
+            if (db) {
+              const newRef = db.ref('ticket_bookings').push();
+              state.processedBookingIds[newRef.key] = true;
+              newRef.set(bookingPayload).catch(function () {});
+              bookingPayload.id = newRef.key;
+            } else {
+              state.processedBookingIds[bookingId] = true;
+              bookingPayload.id = bookingId;
+            }
+
+            // Update local + synced state immediately
+            state.ticketsSold = Math.min(HALL_CAPACITY, state.ticketsSold + seatsToBook.length);
+            state.revenue += totalAmount;
+            markSeatsBookedOnMonitor(seatsToBook, seatsToBook.length);
+            state.liveBookings.unshift(bookingPayload);
+
+            customerSelectedSeats = [];
+            saveState(true);
+            syncSeatStatesToFirebase();
+            renderAll();
+            playOrderBell();
+
+            document.getElementById('customerNameInput').value = '';
+            document.getElementById('customerPhoneInput').value = '';
+            clearCustomerSlipPreview();
+            showConfirmedDigitalTicket(bookingPayload);
+
+            showToast(
+              `🎟️ Booking ${bookingRef} confirmed for ${seatsToBook.join(', ')}!`,
+              'success'
+            );
+          });
+
+          document.getElementById('printTicketBtn').addEventListener('click', function () {
+            window.print();
+          });
+
+          // Slip Lightbox Modal
+          document.getElementById('closeSlipModalBtn').addEventListener('click', function () {
+            document.getElementById('slipModalBackdrop').classList.remove('open');
+          });
+          document.getElementById('slipModalBackdrop').addEventListener('click', function (e) {
+            if (e.target === this) {
+              document.getElementById('slipModalBackdrop').classList.remove('open');
+            }
+          });
+
+          // Manual Reset Modal
+          document.getElementById('manualResetBtn').addEventListener('click', openResetModal);
+          document.getElementById('cancelResetBtn').addEventListener('click', closeResetModal);
+          document.getElementById('confirmResetBtn').addEventListener('click', function () {
+            closeResetModal();
+            performManualReset();
+          });
+          document.getElementById('resetModalBackdrop').addEventListener('click', function (e) {
+            if (e.target === this) {
+              closeResetModal();
+            }
+          });
+          document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+              closeResetModal();
+              document.getElementById('slipModalBackdrop').classList.remove('open');
+            }
+          });
+
+          // History Filter & CSV Export
+          document.getElementById('historySearchInput').addEventListener('input', renderSalesHistory);
+          document.getElementById('exportCsvBtn').addEventListener('click', exportHistoryCsv);
+
+          // Cross-tab real-time updates via BroadcastChannel + storage event
+          if (syncChannel) {
+            syncChannel.addEventListener('message', function (e) {
+              if (e.data && e.data.type === 'state_updated') {
+                const prevBookingsCount = state.liveBookings.length;
+                loadState();
+                renderAll();
+                if (activeView === 'admin' && state.liveBookings.length > prevBookingsCount) {
+                  playOrderBell();
+                }
+              }
+            });
+          }
+
+          window.addEventListener('storage', function () {
+            const prevBookingsCount = state.liveBookings.length;
+            loadState();
+            renderAll();
+            if (activeView === 'admin' && state.liveBookings.length > prevBookingsCount) {
+              playOrderBell();
+            }
+          });
+
+          // Auto-reset check when returning to tab
+          window.addEventListener('focus', checkAutoMidnightReset);
+          document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) {
+              checkAutoMidnightReset();
+            }
+          });
+        }
+
+        // =========================================================================
+        // BOOTSTRAP
+        // =========================================================================
+        loadState();
+        checkAutoMidnightReset();
+        bindEvents();
+        attachFirebaseListeners();
+        updateClockAndDate();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const requestedView = (urlParams.get('view') || '').toLowerCase();
+        if (requestedView === 'booking' || requestedView === 'customer') {
+          setActiveView('booking');
+        } else {
+          setActiveView('admin');
+        }
+
+        renderAll();
+
+        setInterval(function () {
+          updateClockAndDate();
+          checkAutoMidnightReset();
+        }, 1000);
+      })();
+    </script>
+  </body>
+</html>

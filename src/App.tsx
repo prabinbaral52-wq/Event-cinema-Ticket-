@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { ref, onValue, push, set } from 'firebase/database';
 import { db } from './firebase';
 import { Film, Plus, Users, DollarSign, Clock } from 'lucide-react';
 
@@ -8,7 +8,7 @@ interface Movie {
   title: string;
   poster?: string;
   showtime: string;
-  createdAt?: any;
+  createdAt?: number;
 }
 
 interface Booking {
@@ -27,29 +27,35 @@ export default function App() {
   const [showtime, setShowtime] = useState('');
   const [poster, setPoster] = useState('');
 
-  // Live movies
   useEffect(() => {
-    const q = query(collection(db, 'movies'), orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snap) => {
-      setMovies(snap.docs.map(d => ({ id: d.id, ...d.data() } as Movie)));
+    const moviesRef = ref(db, 'movies');
+    return onValue(moviesRef, (snap) => {
+      const data = snap.val() || {};
+      const list = Object.entries(data).map(([id, val]: any) => ({ id, ...val }));
+      list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      setMovies(list);
     });
   }, []);
 
-  // Live bookings
   useEffect(() => {
-    const q = query(collection(db, 'bookings'), orderBy('timestamp', 'desc'));
-    return onSnapshot(q, (snap) => {
-      setBookings(snap.docs.map(d => ({ id: d.id, ...d.data() } as Booking)));
+    const bookingsRef = ref(db, 'bookings');
+    return onValue(bookingsRef, (snap) => {
+      const data = snap.val() || {};
+      const list = Object.entries(data).map(([id, val]: any) => ({ id, ...val }));
+      list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      setBookings(list);
     });
   }, []);
 
   const postMovie = async () => {
     if (!title || !showtime) return alert('Title and showtime required');
-    await addDoc(collection(db, 'movies'), {
+    const moviesRef = ref(db, 'movies');
+    const newRef = push(moviesRef);
+    await set(newRef, {
       title,
       showtime,
       poster: poster || '',
-      createdAt: serverTimestamp()
+      createdAt: Date.now()
     });
     setTitle(''); setShowtime(''); setPoster('');
     alert('Movie posted — customers will see it live');
@@ -67,7 +73,6 @@ export default function App() {
         <Film className="text-red-500" /> Event Cinema — Admin
       </h1>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
           <div className="flex items-center gap-2 text-slate-400"><Users size={18} /> Seats Booked</div>
@@ -83,7 +88,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Post Movie */}
       <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 mb-8">
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Plus /> Post New Movie</h2>
         <div className="grid gap-3 max-w-md">
@@ -94,25 +98,21 @@ export default function App() {
         </div>
       </div>
 
-      {/* Movies list */}
       <div className="mb-8">
         <h2 className="text-lg font-semibold mb-3">Posted Movies</h2>
         <div className="space-y-2">
           {movies.map(m => (
-            <div key={m.id} className="bg-slate-900 p-3 rounded border border-slate-800 flex justify-between">
-              <div>
-                <div className="font-medium">{m.title}</div>
-                <div className="text-sm text-slate-400">{m.showtime}</div>
-              </div>
+            <div key={m.id} className="bg-slate-900 p-3 rounded border border-slate-800">
+              <div className="font-medium">{m.title}</div>
+              <div className="text-sm text-slate-400">{m.showtime}</div>
             </div>
           ))}
           {movies.length === 0 && <p className="text-slate-500">No movies yet</p>}
         </div>
       </div>
 
-      {/* Recent bookings */}
       <div>
-        <h2 className="text-lg font-semibold mb-3">Recent Bookings</h2>
+        <h2 className="text-lg font-semibold mb-3">Recent Bookings (live)</h2>
         <div className="space-y-2">
           {bookings.slice(0, 10).map(b => (
             <div key={b.id} className="bg-slate-900 p-3 rounded border border-slate-800 text-sm">
